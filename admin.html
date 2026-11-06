@@ -5,37 +5,78 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Barber Drive - Panel de Administración</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="admin.css">
 </head>
 <body>
 
   <header class="navbar">
     <div class="logo">Barber <span>Drive Admin</span></div>
-    <a href="index.html" class="btn-primary" style="background:transparent; border:1px solid white;">Ver Sitio Web</a>
+    <a href="index.html" class="btn-outline">Ver Sitio Web</a>
   </header>
 
-  <section class="container">
-    <h2 class="section-title">Gestión de Citas Solicitadas</h2>
+  <main class="admin-main">
+    <div class="section-box">
 
-    <div class="table-responsive">
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Cliente</th>
-            <th>Teléfono</th>
-            <th>Servicio</th>
-            <th>Fecha / Hora</th>
-            <th>Dirección</th>
-            <th>Estado</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody id="adminReservasContainer">
-          <!-- Carga dinámica -->
-        </tbody>
-      </table>
+      <h2 class="section-title">✂️ Gestión de Citas Solicitadas</h2>
+
+      <!-- Resumen -->
+      <section class="stats-grid" aria-label="Resumen de citas">
+        <div class="stat-card">
+          <span class="stat-number" id="statTotal">0</span>
+          <span class="stat-label">Total</span>
+        </div>
+        <div class="stat-card stat-pendiente">
+          <span class="stat-number" id="statPendiente">0</span>
+          <span class="stat-label">Pendientes</span>
+        </div>
+        <div class="stat-card stat-confirmada">
+          <span class="stat-number" id="statConfirmada">0</span>
+          <span class="stat-label">Confirmadas</span>
+        </div>
+        <div class="stat-card stat-cancelada">
+          <span class="stat-number" id="statCancelada">0</span>
+          <span class="stat-label">Canceladas</span>
+        </div>
+      </section>
+
+      <!-- Filtros -->
+      <section class="toolbar">
+        <input type="search" id="buscador" placeholder="Buscar por cliente, teléfono o servicio...">
+        <select id="filtroEstado">
+          <option value="">Todos los estados</option>
+          <option value="Pendiente">Pendiente</option>
+          <option value="Confirmada">Confirmada</option>
+          <option value="Completada">Completada</option>
+          <option value="Cancelada">Cancelada</option>
+        </select>
+        <button id="btnRecargar" class="btn-action btn-recargar">↻ Recargar</button>
+      </section>
+
+      <!-- Tabla -->
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Cliente</th>
+              <th>Teléfono</th>
+              <th>Servicio</th>
+              <th>Fecha / Hora</th>
+              <th>Dirección</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="adminReservasContainer">
+            <tr><td colspan="8" class="table-msg">Cargando citas...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
     </div>
-  </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="admin.js"></script>
 </body>
