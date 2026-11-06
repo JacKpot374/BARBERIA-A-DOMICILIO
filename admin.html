@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Barber Drive - Panel de Administración</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="navbar">
+    <div class="logo">Barber <span>Drive Admin</span></div>
+    <a href="index.html" class="btn-primary" style="background:transparent; border:1px solid white;">Ver Sitio Web</a>
+  </header>
+
+  <section class="container">
+    <h2 class="section-title">Gestión de Citas Solicitadas</h2>
+
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Cliente</th>
+            <th>Teléfono</th>
+            <th>Servicio</th>
+            <th>Fecha / Hora</th>
+            <th>Dirección</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="adminReservasContainer">
+          <!-- Carga dinámica -->
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <script src="admin.js"></script>
+</body>
+</html>

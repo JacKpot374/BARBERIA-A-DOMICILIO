@@ -1,0 +1,116 @@
+:root {
+  --primary-blue: #0F172A;
+  --secondary-blue: #1E3A8A;
+  --primary-red: #DC2626;
+  --bg-white: #FFFFFF;
+  --bg-pattern: #F8FAFC;
+  --text-dark: #1E293B;
+  --text-muted: #64748B;
+  --border: #E2E8F0;
+  --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+body {
+  background-color: var(--bg-pattern);
+  /* PATRÓN DE FONDO CON OBJETOS DE BARBERÍA SUTTILES */
+  background-image: radial-gradient(#CBD5E1 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--text-dark);
+}
+
+.navbar {
+  display: flex; justify-content: space-between; align-items: center;
+  background-color: var(--primary-blue); padding: 1rem 2rem;
+  border-bottom: 4px solid var(--primary-red);
+  position: sticky; top: 0; z-index: 1000;
+}
+.logo { color: white; font-size: 1.5rem; font-weight: 800; }
+.logo span { color: var(--primary-red); }
+.nav-links { display: flex; gap: 1.5rem; list-style: none; align-items: center; }
+.nav-links a { color: white; text-decoration: none; font-weight: 600; font-size: 0.95rem; }
+.nav-links a:hover { color: var(--primary-red); }
+.btn-admin-link { background: rgba(255,255,255,0.1); padding: 0.4rem 0.8rem; border-radius: 4px; }
+
+.hero {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 58, 138, 0.85)), 
+              url('https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=1600&q=80') center/cover;
+  height: 60vh; min-height: 400px; display: flex; align-items: center; justify-content: center;
+  text-align: center; color: white; border-bottom: 4px solid var(--primary-red);
+}
+.hero-content { max-width: 700px; padding: 0 1rem; }
+.hero-badge { background: var(--primary-red); padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; font-weight: bold; text-transform: uppercase; }
+.hero h1 { font-size: 2.5rem; margin: 1rem 0; }
+.hero p { color: #CBD5E1; margin-bottom: 1.5rem; }
+
+/* LAYOUT NO LINEAL (CSS GRID AVANZADO) */
+.main-grid-layout {
+  max-width: 1300px; margin: 3rem auto; padding: 0 1.5rem;
+  display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;
+}
+
+.content-col { display: flex; flex-direction: column; gap: 2.5rem; }
+.sidebar-col { position: sticky; top: 90px; height: fit-content; }
+
+.section-box {
+  background: var(--bg-white); border-radius: 12px; padding: 2rem;
+  box-shadow: var(--shadow); border: 1px solid var(--border);
+}
+.section-title { font-size: 1.4rem; color: var(--primary-blue); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 10px; }
+
+.cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.2rem; }
+.card {
+  background: #F8FAFC; border: 1px solid var(--border); border-radius: 8px; padding: 1.2rem;
+  border-top: 4px solid var(--primary-blue); display: flex; flex-direction: column; justify-content: space-between;
+}
+.card h3 { font-size: 1.1rem; color: var(--primary-blue); margin-bottom: 0.3rem; }
+.card p { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem; }
+.price { font-weight: 800; color: var(--primary-red); font-size: 1.1rem; }
+
+.gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.gallery-item { border-radius: 8px; overflow: hidden; background: #000; position: height 150px; }
+.gallery-item img { width: 100%; height: 140px; object-fit: cover; opacity: 0.9; }
+.gallery-item h3 { font-size: 0.85rem; color: white; padding: 0.5rem; background: var(--primary-blue); text-align: center; }
+
+/* FORMULARIO LATERAL */
+.form-card {
+  background: var(--bg-white); border-radius: 12px; padding: 2rem;
+  box-shadow: var(--shadow); border-top: 5px solid var(--primary-red);
+}
+.form-card h2 { color: var(--primary-blue); font-size: 1.3rem; margin-bottom: 0.2rem; }
+.form-sub { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.form-group { margin-bottom: 1rem; }
+.form-group label { display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 0.3rem; color: var(--primary-blue); }
+.form-group input, .form-group select {
+  width: 100%; padding: 0.7rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; background: #F8FAFC;
+}
+.form-group input:focus, .form-group select:focus { border-color: var(--primary-blue); background: #FFF; outline: none; }
+
+.btn-gps { background: var(--primary-blue); color: white; border: none; padding: 0 12px; border-radius: 6px; cursor: pointer; }
+.btn-primary {
+  background-color: var(--primary-red); color: white; padding: 0.9rem; text-decoration: none;
+  border-radius: 6px; font-weight: bold; border: none; cursor: pointer; width: 100%; text-align: center;
+  transition: opacity 0.2s;
+}
+.btn-primary:hover { opacity: 0.9; }
+.btn-submit { background-color: #25D366; margin-top: 1rem; }
+
+.social-section { background: var(--primary-blue); color: white; text-align: center; padding: 3rem 1rem; margin-top: 3rem; }
+.social-icons { display: flex; justify-content: center; gap: 1rem; margin-top: 1rem; }
+.soc-btn { width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem; text-decoration: none; }
+.soc-btn.ig { background: #E1306C; }
+.soc-btn.fb { background: #1877F2; }
+.soc-btn.tk { background: #000; }
+.soc-btn.wa { background: #25D366; }
+
+footer { background: #070B14; color: #94A3B8; text-align: center; padding: 1.5rem; font-size: 0.85rem; }
+
+@media (max-width: 900px) {
+  .main-grid-layout { grid-template-columns: 1fr; }
+  .sidebar-col { position: static; }
+  .gallery-grid { grid-template-columns: 1fr; }
+  .nav-links { display: none; }
+}

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Barber Drive - Barbería a Domicilio</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- NAVEGACIÓN -->
+  <header class="navbar">
+    <div class="logo"><i class="fa-solid fa-scissors"></i> Barber <span>Drive</span></div>
+    <ul class="nav-links">
+      <li><a href="#servicios">Servicios</a></li>
+      <li><a href="#promociones">Promociones</a></li>
+      <li><a href="#galeria">Galería</a></li>
+      <li><a href="#reserva">Reservar</a></li>
+      <li><a href="admin.html" class="btn-admin-link">Panel Admin</a></li>
+    </ul>
+  </header>
+
+  <!-- HERO SECTION -->
+  <section class="hero">
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <span class="hero-badge">Exclusivo a Domicilio • Managua</span>
+      <h1>Tu Estilo, En La Puerta de tu Casa</h1>
+      <p>Profesionalismo, puntualidad y los mejores cortes directamente donde lo necesites.</p>
+      <a href="#reserva" class="btn-primary"><i class="fa-solid fa-calendar-check"></i> Agendar Ahora</a>
+    </div>
+  </section>
+
+  <!-- CONTENEDOR PRINCIPAL CON DISTRIBUCIÓN MODERNA NO LINEAL -->
+  <main class="main-grid-layout">
+    
+    <!-- COLUMNA IZQUIERDA: INFORMACIÓN Y SERVICIOS -->
+    <div class="content-col">
+      
+      <!-- SERVICIOS (RF-02) -->
+      <section class="section-box" id="servicios">
+        <h2 class="section-title"><i class="fa-solid fa-list"></i> Catálogo de Servicios</h2>
+        <div class="cards-grid" id="servicesContainer"></div>
+      </section>
+
+      <!-- PROMOCIONES (RF-03) -->
+      <section class="section-box" id="promociones">
+        <h2 class="section-title"><i class="fa-solid fa-tags"></i> Promociones Activas</h2>
+        <div class="cards-grid" id="promosContainer"></div>
+      </section>
+
+      <!-- GALERÍA (RF-04) -->
+      <section class="section-box" id="galeria">
+        <h2 class="section-title"><i class="fa-solid fa-images"></i> Trabajos Recientes</h2>
+        <div class="gallery-grid">
+          <div class="gallery-item"><img src="https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&w=500&q=80" alt="Fade"><h3>Skin Fade</h3></div>
+          <div class="gallery-item"><img src="https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=500&q=80" alt="Barba"><h3>Perfilado</h3></div>
+          <div class="gallery-item"><img src="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=500&q=80" alt="Clásico"><h3>Estilo Clásico</h3></div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- COLUMNA DERECHA: FORMULARIO DE RESERVA AVANZADO -->
+    <div class="sidebar-col">
+      <section class="form-card" id="reserva">
+        <h2><i class="fa-solid fa-calendar-plus"></i> Reservar Cita</h2>
+        <p class="form-sub">Completa los datos sin espacios vacíos.</p>
+
+        <form id="bookingForm" novalidate>
+          <div class="form-group">
+            <label>Nombre Completo:</label>
+            <input type="text" id="clienteNombre" placeholder="Ej. Juan Pérez" required>
+          </div>
+
+          <div class="form-group">
+            <label>Teléfono (WhatsApp):</label>
+            <input type="tel" id="clienteTelefono" placeholder="Ej. 88888888" required>
+          </div>
+
+          <div class="form-group">
+            <label>Seleccionar Servicio:</label>
+            <select id="servicioSelect" required></select>
+          </div>
+
+          <!-- ZONAS DE COBERTURA Y DISTRITOS DE MANAGUA (RF-06) -->
+          <div class="form-group">
+            <label>Zona de Cobertura / Distrito:</label>
+            <select id="zonaSelect" required>
+              <option value="" disabled selected>-- Elige tu Distrito --</option>
+              <option value="Distrito I (Centro / Bolonia) - C$0">Distrito I - Centro / Bolonia (Envío Gratis)</option>
+              <option value="Distrito II (Monseñor Lezcano / Altagracia) - C$70">Distrito II - Monseñor Lezcano / Altagracia (+C$70)</option>
+              <option value="Distrito III (Suroeste / Nejapa) - C$100">Distrito III - Suroeste / Nejapa (+C$100)</option>
+              <option value="Distrito IV (Este / R. Schick) - C$70">Distrito IV - Este / R. Schick (+C$70)</option>
+              <option value="Distrito V (Sureste / Villa Progreso) - C$90">Distrito V - Sureste / Villa Progreso (+C$90)</option>
+              <option value="Distrito VI (Noreste / Sabana Grande) - C$120">Distrito VI - Noreste / Sabana Grande (+C$120)</option>
+              <option value="Distrito VII (A. Sandino / Sabana) - C$120">Distrito VII - Sabana Grande (+C$120)</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Fecha de Cita (Año 2026):</label>
+              <input type="date" id="fechaCita" required min="2026-01-01" max="2026-12-31">
+            </div>
+            <div class="form-group">
+              <label>Hora:</label>
+              <input type="time" id="horaCita" required>
+            </div>
+          </div>
+
+          <!-- DIRECCIÓN CON GEOLOCALIZACIÓN -->
+          <div class="form-group">
+            <label>Dirección Exacta o Ubicación GPS:</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="direccion" placeholder="Ej. Reparto Bolonia, de la iglesia 2c al sur" required style="flex:1;">
+              <button type="button" onclick="obtenerUbicacionGPS()" class="btn-gps" title="Usar mi ubicación actual"><i class="fa-solid fa-location-crosshairs"></i></button>
+            </div>
+          </div>
+
+          <!-- MÉTODO DE PAGO -->
+          <div class="form-group">
+            <label>Método de Pago:</label>
+            <select id="metodoPago" required>
+              <option value="Efectivo al recibir">Efectivo al recibir el servicio</option>
+              <option value="Transferencia Bancaria">Transferencia Bancaria (BAC / Lafise)</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn-primary btn-submit">
+            <i class="fa-brands fa-whatsapp"></i> Confirmar Cita por WhatsApp
+          </button>
+        </form>
+      </section>
+    </div>
+
+  </main>
+
+  <!-- REDES SOCIALES Y FOOTER -->
+  <section class="social-section">
+    <h2>Encuéntranos en Redes Sociales</h2>
+    <div class="social-icons">
+      <a href="#" class="soc-btn ig"><i class="fa-brands fa-instagram"></i></a>
+      <a href="#" class="soc-btn fb"><i class="fa-brands fa-facebook-f"></i></a>
+      <a href="#" class="soc-btn tk"><i class="fa-brands fa-tiktok"></i></a>
+      <a href="https://wa.me/50500000000" class="soc-btn wa"><i class="fa-brands fa-whatsapp"></i></a>
+    </div>
+  </section>
+
+  <footer>
+    <p>&copy; 2026 Barber Drive. Todos los derechos reservados.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
