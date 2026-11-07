@@ -1,7 +1,6 @@
 const API_URL = 'http://localhost:3000/api';
 
 let reservas = [];   // copia local para filtrar sin volver a consultar
-let totalSolicitudes = 0;
 
 const tbody        = document.getElementById('adminReservasContainer');
 const buscador     = document.getElementById('buscador');
@@ -55,8 +54,8 @@ async function cargarReservasAdmin() {
 
 function actualizarResumen() {
   const contar = estado => reservas.filter(r => r.Estado === estado).length;
-  document.getElementById('statTotal').textContent     = reservas.length + totalSolicitudes;
-  document.getElementById('statPendiente').textContent = contar('Pendiente') + totalSolicitudes;
+  document.getElementById('statTotal').textContent      = reservas.length;
+  document.getElementById('statPendiente').textContent  = contar('Pendiente');
   document.getElementById('statConfirmada').textContent = contar('Confirmada');
   document.getElementById('statCancelada').textContent  = contar('Cancelada');
 }
@@ -156,83 +155,24 @@ btnRecargar.addEventListener('click', cargarReservasAdmin);
 
 cargarReservasAdmin();
 
-/* ========== SOLICITUDES POR APROBAR ========== */
-const tbodySolicitudes = document.getElementById('solicitudesContainer');
-
-async function cargarSolicitudes() {
-  try {
-    const resp = await fetch(`${API_URL}/solicitudes`);
-    if (!resp.ok) throw new Error(`Error ${resp.status}`);
-    const lista = await resp.json();
-
-    totalSolicitudes = lista.length;
-    actualizarResumen();
-
-    if (lista.length === 0) {
-      tbodySolicitudes.innerHTML = '<tr><td colspan="7" class="table-msg">No hay solicitudes pendientes.</td></tr>';
-      return;
-    }
-
-    tbodySolicitudes.innerHTML = lista.map(s => `
-      <tr>
-        <td>#${s.IdSolicitud}</td>
-        <td>${escapeHtml(s.Cliente)}</td>
-        <td>${escapeHtml(s.Telefono)}</td>
-        <td>${escapeHtml(s.Servicio)}</td>
-        <td class="fecha-hora">${formatearFecha(s.Fecha)}<small>${formatearHora(s.Hora)}</small></td>
-        <td>${escapeHtml(s.Direccion)}</td>
+// Ejemplo de cómo debe mapear admin.js los datos devueltos por la API /api/reservas:
+reservas.forEach(reserva => {
+    const fila = document.createElement('tr');
+    fila.innerHTML = `
+        <td>#${reserva.IdReserva || reserva.id}</td>
+        <td>${reserva.NombreCliente || reserva.cliente || 'N/D'}</td>
+        <td>${reserva.Telefono || reserva.telefono || 'N/D'}</td>
+        <td>${reserva.NombreServicio || reserva.servicio || 'N/D'}</td>
+        <td>${reserva.FechaHora || reserva.fecha || 'N/D'}</td>
+        <td>${reserva.Direccion || reserva.direccion || 'N/D'}</td>
+        <td><span class="badge ${reserva.Estado ? reserva.Estado.toLowerCase() : 'pendiente'}">${reserva.Estado || 'Pendiente'}</span></td>
         <td>
-          <div class="acciones">
-            <button class="btn-action btn-confirmar" data-sol="aceptar" data-id="${s.IdSolicitud}">Aceptar</button>
-            <button class="btn-action btn-eliminar"  data-sol="rechazar" data-id="${s.IdSolicitud}">Rechazar</button>
+          <div class="btn-action-group">
+            <button class="btn-action-confirm" onclick="cambiarEstado(${reserva.IdReserva}, 'Confirmada')">Confirmar</button>
+            <button class="btn-action-cancel" onclick="cambiarEstado(${reserva.IdReserva}, 'Cancelada')">Cancelar</button>
+            <button class="btn-action-delete" onclick="eliminarReserva(${reserva.IdReserva})">Eliminar</button>
           </div>
         </td>
-      </tr>
-    `).join('');
-  } catch (err) {
-    console.error('Error al cargar solicitudes:', err);
-    tbodySolicitudes.innerHTML = '<tr><td colspan="7" class="table-msg error">No se pudieron cargar las solicitudes.</td></tr>';
-  }
-}
-
-// Arma el enlace de WhatsApp (Nicaragua = 505)
-function enlaceWhatsApp(telefono, mensaje) {
-  let num = String(telefono).replace(/\D/g, '');
-  if (num.length === 8) num = '505' + num;
-  return `https://wa.me/${num}?text=${encodeURIComponent(mensaje)}`;
-}
-
-tbodySolicitudes.addEventListener('click', async (e) => {
-  const btn = e.target.closest('button[data-sol]');
-  if (!btn) return;
-  const { sol, id } = btn.dataset;
-
-  if (sol === 'rechazar' && !confirm(`¿Rechazar la solicitud #${id}? Se avisará al cliente por WhatsApp.`)) return;
-
-  // Abrir la pestaña ahora (antes del await) para que el navegador no la bloquee
-  const ventanaWA = sol === 'rechazar' ? window.open('', '_blank') : null;
-
-  btn.disabled = true;
-  try {
-    const resp = await fetch(`${API_URL}/solicitudes/${id}/${sol}`, { method: 'POST' });
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok) throw new Error(data.message || data.error || 'No se pudo completar la acción');
-
-    if (sol === 'rechazar' && data.solicitud) {
-      const s = data.solicitud;
-      const msg = `Hola ${s.Nombre}, lamentamos informarte que no podemos atender tu cita del ` +
-                  `${formatearFecha(s.Fecha)} a las ${formatearHora(s.Hora)}. ` +
-                  `Puedes solicitar otra fecha u horario en nuestro sitio. ¡Gracias! - Barber Drive`;
-      ventanaWA.location.href = enlaceWhatsApp(s.Telefono, msg);
-    }
-
-    mostrarToast(data.message, 'ok');
-    await Promise.all([cargarSolicitudes(), cargarReservasAdmin()]);
-  } catch (err) {
-    if (ventanaWA) ventanaWA.close();
-    mostrarToast(err.message, 'error');
-    btn.disabled = false;
-  }
+    `;
+    adminReservasContainer.appendChild(fila);
 });
-
-cargarSolicitudes();
