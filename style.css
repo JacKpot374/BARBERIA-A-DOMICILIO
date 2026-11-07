@@ -115,3 +115,23 @@ footer { background: #070B14; color: #94A3B8; text-align: center; padding: 1.5re
   .nav-links { display: none; }
 }
 
+.toast-cliente {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translate(-50%, 20px);
+  max-width: 90%;
+  background: var(--primary-blue);
+  color: #fff;
+  padding: 0.9rem 1.5rem;
+  border-radius: 8px;
+  border-left: 4px solid #22C55E;
+  box-shadow: var(--shadow);
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s, transform 0.3s;
+  z-index: 3000;
+}
+.toast-cliente.show { opacity: 1; transform: translate(-50%, 0); }
+.toast-cliente.error { border-left-color: var(--primary-red); }

@@ -1,6 +1,6 @@
 const API_URL = "http://localhost:3000/api";
 
-// DATOS DE RESPALDO (Garantizan que NUNCA se quede en blanco la interfaz)
+// DATOS DE RESPALDO (para que la interfaz nunca quede en blanco)
 const SERVICIOS_DEFAULT = [
   { IdServicio: 1, Nombre: "Corte Clásico / Fade", Descripcion: "Lavado, degradado y perfilado a navaja.", PrecioCordobas: 300.00 },
   { IdServicio: 2, Nombre: "Corte y Perfilado de Barba", Descripcion: "Servicio completo a domicilio + toalla caliente.", PrecioCordobas: 450.00 },
@@ -12,25 +12,50 @@ const PROMOS_DEFAULT = [
   { Titulo: "Combo Dúo Familiar", Descripcion: "Dos cortes a domicilio en la misma dirección por solo C$650.00 NIO." }
 ];
 
+/* ---------- Utilidades ---------- */
+function escapeHtml(texto) {
+  return String(texto ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+// Fecha local (YYYY-MM-DD), no en UTC
+function fechaLocalHoy() {
+  const d = new Date();
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mes}-${dia}`;
+}
+
+function avisoCliente(mensaje, tipo = 'ok') {
+  const el = document.getElementById('toastCliente');
+  if (!el) { alert(mensaje); return; }   // respaldo si falta el div
+  el.textContent = mensaje;
+  el.className = `toast-cliente show ${tipo}`;
+  clearTimeout(avisoCliente.timer);
+  avisoCliente.timer = setTimeout(() => el.classList.remove('show'), 4000);
+}
+
+/* ---------- Inicio ---------- */
 document.addEventListener('DOMContentLoaded', () => {
   cargarServicios();
+  cargarZonas();
   cargarPromociones();
-  
-  // Asignar fecha mínima de hoy (Año 2026)
-  const hoy = new Date().toISOString().split('T')[0];
+
+  const hoy = fechaLocalHoy();
   const campoFecha = document.getElementById('fechaCita');
-  if(campoFecha) {
+  if (campoFecha) {
     campoFecha.setAttribute('min', hoy);
     campoFecha.value = hoy;
   }
 
   const form = document.getElementById('bookingForm');
-  if(form) {
+  if (form) {
     form.addEventListener('submit', validarYEnviarReserva);
   }
 });
 
-// CARGAR SERVICIOS (Desde BD o Respaldo)
+/* ---------- SERVICIOS ---------- */
 async function cargarServicios() {
   let servicios = SERVICIOS_DEFAULT;
 
@@ -38,9 +63,7 @@ async function cargarServicios() {
     const res = await fetch(`${API_URL}/servicios`);
     if (res.ok) {
       const data = await res.json();
-      if (data && data.length > 0) {
-        servicios = data;
-      }
+      if (data && data.length > 0) servicios = data;
     }
   } catch (err) {
     console.warn("Usando datos locales de servicios por respaldo de red.");
@@ -48,30 +71,56 @@ async function cargarServicios() {
 
   const container = document.getElementById('servicesContainer');
   const select = document.getElementById('servicioSelect');
-  
   if (!container || !select) return;
 
   container.innerHTML = '';
   select.innerHTML = '<option value="" disabled selected>-- Elige un servicio --</option>';
 
   servicios.forEach(s => {
-    // Manejar si viene de la BD como Precio o PrecioCordobas
-    const precioFinal = s.PrecioCordobas !== undefined ? s.PrecioCordobas : (s.Precio || 0);
+    const precio = Number(s.PrecioCordobas !== undefined ? s.PrecioCordobas : (s.Precio || 0)).toFixed(2);
 
     container.innerHTML += `
       <div class="card">
         <div>
-          <h3>${s.Nombre}</h3>
-          <p>${s.Descripcion}</p>
+          <h3>${escapeHtml(s.Nombre)}</h3>
+          <p>${escapeHtml(s.Descripcion)}</p>
         </div>
-        <span class="price">C$ ${Number(precioFinal).toFixed(2)} NIO</span>
+        <span class="price">C$ ${precio} NIO</span>
       </div>
     `;
-    select.innerHTML += `<option value="${s.Nombre} - C$${Number(precioFinal).toFixed(2)}">${s.Nombre} (C$ ${Number(precioFinal).toFixed(2)})</option>`;
+    // value = ID numérico (es lo que necesita la base de datos)
+    select.innerHTML += `<option value="${s.IdServicio}">${escapeHtml(s.Nombre)} (C$ ${precio})</option>`;
   });
 }
 
-// CARGAR PROMOCIONES (Desde BD o Respaldo)
+/* ---------- ZONAS ---------- */
+async function cargarZonas() {
+  const select = document.getElementById('zonaSelect');
+  if (!select) return;
+
+  try {
+    const res = await fetch(`${API_URL}/zonas`);
+    if (!res.ok) throw new Error(`Error ${res.status}`);
+    const zonas = await res.json();
+    if (!zonas || zonas.length === 0) throw new Error('Sin zonas');
+
+    select.innerHTML = '<option value="" disabled selected>-- Elige tu Distrito --</option>';
+    zonas.forEach(z => {
+      // Nombres de columna tolerantes (ajusta si los tuyos son distintos)
+      const id     = z.IdZona ?? z.Id;
+      const nombre = z.Nombre ?? z.NombreZona ?? z.Distrito ?? `Zona ${id}`;
+      const costo  = z.Costo ?? z.CostoEnvio ?? z.CostoTransporte ?? z.Recargo;
+      const texto  = costo !== undefined && costo !== null
+        ? `${nombre} - C$${Number(costo).toFixed(0)}`
+        : nombre;
+      select.innerHTML += `<option value="${id}">${escapeHtml(texto)}</option>`;
+    });
+  } catch (err) {
+    console.warn("No se pudieron cargar las zonas desde la BD:", err.message);
+  }
+}
+
+/* ---------- PROMOCIONES ---------- */
 async function cargarPromociones() {
   let promos = PROMOS_DEFAULT;
 
@@ -79,9 +128,7 @@ async function cargarPromociones() {
     const res = await fetch(`${API_URL}/promociones`);
     if (res.ok) {
       const data = await res.json();
-      if (data && data.length > 0) {
-        promos = data;
-      }
+      if (data && data.length > 0) promos = data;
     }
   } catch (err) {
     console.warn("Usando datos locales de promociones por respaldo de red.");
@@ -94,106 +141,92 @@ async function cargarPromociones() {
   promos.forEach(p => {
     container.innerHTML += `
       <div class="card" style="border-top-color: var(--primary-red);">
-        <h3><i class="fa-solid fa-tag"></i> ${p.Titulo}</h3>
-        <p>${p.Descripcion}</p>
+        <h3><i class="fa-solid fa-tag"></i> ${escapeHtml(p.Titulo)}</h3>
+        <p>${escapeHtml(p.Descripcion)}</p>
       </div>
     `;
   });
 }
 
-// OBTENER UBICACIÓN GPS
+/* ---------- GPS ---------- */
 function obtenerUbicacionGPS() {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(position => {
-      const lat = position.coords.latitude;
-      const lon = position.coords.longitude;
-      document.getElementById('direccion').value = `GPS: Lat ${lat.toFixed(4)}, Lon ${lon.toFixed(4)}`;
-      alert("¡Ubicación GPS capturada con éxito!");
-    }, () => {
-      alert("No se pudo obtener la ubicación. Por favor ingrese su dirección manual.");
-    });
-  } else {
-    alert("Tu navegador no soporta geolocalización.");
+  if (!navigator.geolocation) {
+    avisoCliente('Tu navegador no soporta geolocalización.', 'error');
+    return;
   }
+  navigator.geolocation.getCurrentPosition(position => {
+    const lat = position.coords.latitude;
+    const lon = position.coords.longitude;
+    document.getElementById('direccion').value = `GPS: Lat ${lat.toFixed(4)}, Lon ${lon.toFixed(4)}`;
+    avisoCliente('📍 Ubicación GPS capturada con éxito.');
+  }, () => {
+    avisoCliente('No se pudo obtener la ubicación. Ingresa tu dirección manualmente.', 'error');
+  });
 }
 
-// VALIDACIÓN Y ENVÍO
-function validarYEnviarReserva(e) {
+/* ---------- VALIDACIÓN Y ENVÍO ---------- */
+async function validarYEnviarReserva(e) {
   e.preventDefault();
 
-  const nombre = document.getElementById('clienteNombre').value.trim();
-  const telefono = document.getElementById('clienteTelefono').value.trim();
-  const servicio = document.getElementById('servicioSelect').value;
-  const zona = document.getElementById('zonaSelect').value;
-  const fecha = document.getElementById('fechaCita').value;
-  const hora = document.getElementById('horaCita').value;
+  const nombre    = document.getElementById('clienteNombre').value.trim();
+  const telefono  = document.getElementById('clienteTelefono').value.trim();
+  const servicio  = document.getElementById('servicioSelect').value;
+  const zona      = document.getElementById('zonaSelect').value;
+  const fecha     = document.getElementById('fechaCita').value;
+  const hora      = document.getElementById('horaCita').value;
   const direccion = document.getElementById('direccion').value.trim();
-  const pago = document.getElementById('metodoPago').value;
 
   if (!nombre || !telefono || !servicio || !zona || !fecha || !hora || !direccion) {
-    alert("⚠️ Error: Todos los campos son obligatorios y no pueden estar vacíos.");
+    avisoCliente('⚠️ Todos los campos son obligatorios.', 'error');
     return;
   }
 
-  const anioCita = new Date(fecha).getFullYear();
-  if (anioCita !== 2026) {
-    alert("⚠️ Error: La fecha de la reserva debe corresponder estrictamente al año actual (2026).");
+  // Teléfono: solo dígitos (se permiten espacios y guiones al escribir)
+  const telLimpio = telefono.replace(/[\s-]/g, '');
+  if (!/^\d{8,15}$/.test(telLimpio)) {
+    avisoCliente('⚠️ El teléfono debe tener solo números (8 dígitos).', 'error');
     return;
   }
 
-  // Enviar a Base de Datos (Opcional en segundo plano)
-  try {
-    fetch(`${API_URL}/reservas`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nombre, telefono, idServicio: 1, idZona: 1, fecha, hora, direccion })
-    });
-  } catch (err) {
-    console.log("Guardado local omitido, enviando directo a WhatsApp.");
+  if (fecha.slice(0, 4) !== '2026') {
+    avisoCliente('⚠️ La fecha debe corresponder al año 2026.', 'error');
+    return;
   }
 
-  const numeroBarbero = "50500000000";
-  const mensaje = `*NUEVA RESERVA - BARBER DRIVE*%0A%0A` +
-    `*Cliente:* ${encodeURIComponent(nombre)}%0A` +
-    `*Teléfono:* ${encodeURIComponent(telefono)}%0A` +
-    `*Servicio:* ${encodeURIComponent(servicio)}%0A` +
-    `*Zona/Distrito:* ${encodeURIComponent(zona)}%0A` +
-    `*Fecha:* ${encodeURIComponent(fecha)}%0A` +
-    `*Hora:* ${encodeURIComponent(hora)}%0A` +
-    `*Dirección:* ${encodeURIComponent(direccion)}%0A` +
-    `*Método de Pago:* ${encodeURIComponent(pago)}`;
+  const idServicio = Number(servicio);
+  const idZona     = Number(zona);
+  if (!idServicio || !idZona) {
+    console.error('Los select no tienen IDs numéricos:', { servicio, zona });
+    avisoCliente('Error interno: servicio o zona sin identificador.', 'error');
+    return;
+  }
 
-  ;
-
-  const form = document.querySelector('form');   // usa el selector que ya tienes
-
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
-
+  const form = e.target;
   const btn = form.querySelector('button[type="submit"]');
-  if (btn.disabled) return;          // ya se está enviando
+  if (btn.disabled) return;
   btn.disabled = true;
-  btn.textContent = 'Enviando...';
 
   try {
-    const resp = await fetch('http://localhost:3000/api/reservas', {
+    const resp = await fetch(`${API_URL}/reservas`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nombre, telefono, idServicio, idZona, fecha, hora, direccion })
+      body: JSON.stringify({ nombre, telefono: telLimpio, idServicio, idZona, fecha, hora, direccion })
     });
     const data = await resp.json().catch(() => ({}));
 
     if (!resp.ok) {
-      alert(data.message || data.error || 'No se pudo enviar la solicitud.');
+      avisoCliente(data.message || data.error || 'No se pudo enviar la información.', 'error');
       return;
     }
-    alert('¡Solicitud enviada! Te confirmaremos tu cita pronto.');
+
+    avisoCliente('✅ La información se envió con éxito.');
     form.reset();
+    const campoFecha = document.getElementById('fechaCita');
+    if (campoFecha) campoFecha.value = fechaLocalHoy();
   } catch (err) {
-    alert('No se pudo conectar con el servidor.');
+    console.error(err);
+    avisoCliente('No se pudo conectar con el servidor.', 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Confirmar Cita';
   }
-});
 }
