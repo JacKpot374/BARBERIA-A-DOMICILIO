@@ -163,5 +163,37 @@ function validarYEnviarReserva(e) {
     `*Dirección:* ${encodeURIComponent(direccion)}%0A` +
     `*Método de Pago:* ${encodeURIComponent(pago)}`;
 
-  window.open(`https://wa.me/${numeroBarbero}?text=${mensaje}`, '_blank');
+  ;
+
+  const form = document.querySelector('form');   // usa el selector que ya tienes
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const btn = form.querySelector('button[type="submit"]');
+  if (btn.disabled) return;          // ya se está enviando
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+
+  try {
+    const resp = await fetch('http://localhost:3000/api/reservas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre, telefono, idServicio, idZona, fecha, hora, direccion })
+    });
+    const data = await resp.json().catch(() => ({}));
+
+    if (!resp.ok) {
+      alert(data.message || data.error || 'No se pudo enviar la solicitud.');
+      return;
+    }
+    alert('¡Solicitud enviada! Te confirmaremos tu cita pronto.');
+    form.reset();
+  } catch (err) {
+    alert('No se pudo conectar con el servidor.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Confirmar Cita';
+  }
+});
 }

@@ -39,6 +39,29 @@
         </div>
       </section>
 
+      <!-- CUADRO DE ESPERA -->
+      <h3 class="subtitulo-tabla">📩 Solicitudes por aprobar</h3>
+      <div class="table-responsive tabla-solicitudes">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Cliente</th>
+              <th>Teléfono</th>
+              <th>Servicio</th>
+              <th>Fecha / Hora</th>
+              <th>Dirección</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="solicitudesContainer">
+            <tr><td colspan="7" class="table-msg">Cargando solicitudes...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="subtitulo-tabla">✅ Citas registradas</h3>
+
       <!-- Filtros -->
       <section class="toolbar">
         <input type="search" id="buscador" placeholder="Buscar por cliente, teléfono o servicio...">
@@ -52,7 +75,7 @@
         <button id="btnRecargar" class="btn-action btn-recargar">↻ Recargar</button>
       </section>
 
-      <!-- Tabla -->
+      <!-- Tabla de citas -->
       <div class="table-responsive">
         <table>
           <thead>

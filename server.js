@@ -1,13 +1,13 @@
 // server.js
 const express = require('express');
 const cors = require('cors');
-const sql = require('mssql/msnodesqlv8'); // <-- driver con Windows Auth
+const sql = require('mssql/msnodesqlv8');
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
-// CONFIGURACIÓN DE CONEXIÓN A SQL SERVER (Autenticación de Windows)
+// ---------- CONEXIÓN (Autenticación de Windows) ----------
 const dbConfig = {
     connectionString:
         'Driver={ODBC Driver 17 for SQL Server};' +
@@ -17,25 +17,23 @@ const dbConfig = {
         'TrustServerCertificate=Yes;'
 };
 
-// Un solo pool reutilizable
 let poolPromise;
 function getPool() {
     if (!poolPromise) {
         poolPromise = new sql.ConnectionPool(dbConfig).connect().catch(err => {
-            poolPromise = null; // permite reintentar
+            poolPromise = null;
             throw err;
         });
     }
     return poolPromise;
 }
 
-// 1. OBTENER SERVICIOS (RF-02)
+// ---------- CATÁLOGOS ----------
 app.get('/api/servicios', async (req, res) => {
     try {
         const pool = await getPool();
         const result = await pool.request().query(
-            "SELECT IdServicio, Nombre, Descripcion, Precio AS PrecioCordobas FROM Servicios WHERE Activo = 1"
-        );
+            "SELECT IdServicio, Nombre, Descripcion, Precio AS PrecioCordobas FROM Servicios");
         res.json(result.recordset);
     } catch (err) {
         console.error("Error en servicios:", err);
@@ -43,13 +41,10 @@ app.get('/api/servicios', async (req, res) => {
     }
 });
 
-// 2. OBTENER PROMOCIONES (RF-03)
 app.get('/api/promociones', async (req, res) => {
     try {
         const pool = await getPool();
-        const result = await pool.request().query(
-            "SELECT IdPromocion, Titulo, Descripcion FROM Promociones WHERE Activa = 1"
-        );
+        const result = await pool.request().query("SELECT * FROM Promociones WHERE Activa = 1");
         res.json(result.recordset);
     } catch (err) {
         console.error("Error en promociones:", err);
@@ -57,7 +52,6 @@ app.get('/api/promociones', async (req, res) => {
     }
 });
 
-// 3. OBTENER ZONAS DE COBERTURA (RF-06)
 app.get('/api/zonas', async (req, res) => {
     try {
         const pool = await getPool();
@@ -69,8 +63,177 @@ app.get('/api/zonas', async (req, res) => {
     }
 });
 
-// OBTENER RESERVAS
-// OBTENER RESERVAS (con cliente y servicio)
+// ---------- 1. CLIENTE ENVÍA SOLICITUD (va a la tabla de espera) ----------
+app.post('/api/reservas', async (req, res) => {
+    const { nombre, telefono, idServicio, idZona, fecha, hora, direccion } = req.body;
+
+    // Validar que lleguen los datos
+    if (!nombre || !telefono || !idServicio || !idZona || !fecha || !hora) {
+        console.error("Datos incompletos recibidos:", req.body);
+        return res.status(400).json({
+            message: 'Faltan datos: se requiere nombre, telefono, idServicio, idZona, fecha y hora.'
+        });
+    }
+
+    try {
+        const pool = await getPool();
+
+        // Evitar duplicados: misma persona, misma fecha y hora
+        const duplicada = await pool.request()
+            .input('telefono', sql.NVarChar, telefono)
+            .input('fecha', sql.NVarChar, fecha)
+            .input('hora', sql.NVarChar, hora)
+            .query(`
+                SELECT
+                  (SELECT COUNT(*) FROM SolicitudesPendientes
+                    WHERE Telefono = @telefono AND FechaCita = @fecha
+                      AND HoraCita = @hora AND Estado = 'Pendiente')
+                +
+                  (SELECT COUNT(*) FROM Reservas r
+                    INNER JOIN Clientes c ON c.IdCliente = r.IdCliente
+                    WHERE c.Telefono = @telefono AND r.FechaCita = @fecha
+                      AND r.HoraCita = @hora AND r.Estado <> 'Cancelada') AS Total`);
+
+        if (duplicada.recordset[0].Total > 0) {
+            return res.status(409).json({
+                message: 'Ya enviaste una solicitud para esa fecha y hora.'
+            });
+        }
+
+        await pool.request()
+            .input('nombre', sql.NVarChar, nombre)
+            .input('telefono', sql.NVarChar, telefono)
+            .input('idServicio', sql.Int, idServicio)
+            .input('idZona', sql.Int, idZona)
+            .input('fecha', sql.NVarChar, fecha)
+            .input('hora', sql.NVarChar, hora)
+            .input('direccion', sql.NVarChar, direccion || '')
+            .query(`INSERT INTO SolicitudesPendientes
+                    (Nombre, Telefono, IdServicio, IdZona, FechaCita, HoraCita, Direccion)
+                    VALUES (@nombre, @telefono, @idServicio, @idZona, @fecha, @hora, @direccion)`);
+
+        res.status(201).json({ message: 'Solicitud enviada. Te confirmaremos pronto.' });
+    } catch (err) {
+        console.error("Error al registrar solicitud:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ---------- 2. ADMIN: LISTAR SOLICITUDES POR APROBAR ----------
+app.get('/api/solicitudes', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request().query(`
+            SELECT sp.IdSolicitud,
+                   sp.Nombre   AS Cliente,
+                   sp.Telefono,
+                   s.Nombre    AS Servicio,
+                   CONVERT(VARCHAR(10), sp.FechaCita, 23) AS Fecha,
+                   CONVERT(VARCHAR(5),  sp.HoraCita, 108) AS Hora,
+                   sp.Direccion
+            FROM SolicitudesPendientes sp
+            INNER JOIN Servicios s ON s.IdServicio = sp.IdServicio
+            WHERE sp.Estado = 'Pendiente'
+            ORDER BY sp.FechaSolicitud ASC
+        `);
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error al listar solicitudes:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ---------- 3. ADMIN: ACEPTAR (recién aquí se guarda en Reservas) ----------
+app.post('/api/solicitudes/:id/aceptar', async (req, res) => {
+    const tx = new sql.Transaction(await getPool());
+    try {
+        await tx.begin();
+
+        const sol = await new sql.Request(tx)
+            .input('id', sql.Int, req.params.id)
+            .query(`SELECT Nombre, Telefono, IdServicio, IdZona, Direccion,
+                           CONVERT(VARCHAR(10), FechaCita, 23) AS Fecha,
+                           CONVERT(VARCHAR(8),  HoraCita, 108) AS Hora
+                    FROM SolicitudesPendientes
+                    WHERE IdSolicitud = @id AND Estado = 'Pendiente'`);
+
+        if (sol.recordset.length === 0) {
+            await tx.rollback();
+            return res.status(404).json({ message: 'Solicitud no encontrada o ya procesada.' });
+        }
+        const s = sol.recordset[0];
+
+        // Validar choque de horario (RF-14)
+        const colision = await new sql.Request(tx)
+            .input('fecha', sql.NVarChar, s.Fecha)
+            .input('hora', sql.NVarChar, s.Hora)
+            .query(`SELECT COUNT(*) AS Conteo FROM Reservas
+                    WHERE FechaCita = @fecha AND HoraCita = @hora AND Estado = 'Confirmada'`);
+        if (colision.recordset[0].Conteo > 0) {
+            await tx.rollback();
+            return res.status(400).json({ message: 'Ya existe una cita confirmada en ese mismo horario.' });
+        }
+
+        // Cliente: buscar o crear
+        const cli = await new sql.Request(tx)
+            .input('telefono', sql.NVarChar, s.Telefono)
+            .query("SELECT IdCliente FROM Clientes WHERE Telefono = @telefono");
+
+        let idCliente;
+        if (cli.recordset.length === 0) {
+            const nuevo = await new sql.Request(tx)
+                .input('nombre', sql.NVarChar, s.Nombre)
+                .input('telefono', sql.NVarChar, s.Telefono)
+                .query("INSERT INTO Clientes (Nombre, Telefono) OUTPUT INSERTED.IdCliente VALUES (@nombre, @telefono)");
+            idCliente = nuevo.recordset[0].IdCliente;
+        } else {
+            idCliente = cli.recordset[0].IdCliente;
+        }
+
+        // Guardar la reserva ya CONFIRMADA
+        await new sql.Request(tx)
+            .input('idCliente', sql.Int, idCliente)
+            .input('idServicio', sql.Int, s.IdServicio)
+            .input('idZona', sql.Int, s.IdZona)
+            .input('fecha', sql.NVarChar, s.Fecha)
+            .input('hora', sql.NVarChar, s.Hora)
+            .input('direccion', sql.NVarChar, s.Direccion)
+            .query(`INSERT INTO Reservas (IdCliente, IdServicio, IdZona, FechaCita, HoraCita, DireccionServicio, Estado)
+                    VALUES (@idCliente, @idServicio, @idZona, @fecha, @hora, @direccion, 'Confirmada')`);
+
+        // Quitar de la lista de espera
+        await new sql.Request(tx)
+            .input('id', sql.Int, req.params.id)
+            .query("DELETE FROM SolicitudesPendientes WHERE IdSolicitud = @id");
+
+        await tx.commit();
+        res.json({ message: 'Cita aceptada y guardada.' });
+    } catch (err) {
+        try { await tx.rollback(); } catch (_) {}
+        console.error("Error al aceptar solicitud:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ---------- 4. ADMIN: RECHAZAR (queda como Cancelada, no pasa a Reservas) ----------
+app.post('/api/solicitudes/:id/rechazar', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request()
+            .input('id', sql.Int, req.params.id)
+            .query("UPDATE SolicitudesPendientes SET Estado = 'Cancelada' WHERE IdSolicitud = @id AND Estado = 'Pendiente'");
+
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ message: 'Solicitud no encontrada o ya procesada.' });
+        }
+        res.json({ message: 'Los datos se han enviado exitosamente. Solicitud cancelada.' });
+    } catch (err) {
+        console.error("Error al rechazar solicitud:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ---------- 5. ADMIN: RESERVAS REGISTRADAS ----------
 app.get('/api/reservas', async (req, res) => {
     try {
         const pool = await getPool();
@@ -95,65 +258,6 @@ app.get('/api/reservas', async (req, res) => {
     }
 });
 
-// ELIMINAR RESERVA
-app.delete('/api/reservas/:id', async (req, res) => {
-    try {
-        const pool = await getPool();
-        const result = await pool.request()
-            .input('idReserva', sql.Int, req.params.id)
-            .query("DELETE FROM Reservas WHERE IdReserva = @idReserva");
-
-        if (result.rowsAffected[0] === 0) {
-            return res.status(404).json({ message: 'Reserva no encontrada.' });
-        }
-        res.json({ message: 'Reserva eliminada' });
-    } catch (err) {
-        console.error("Error al eliminar reserva:", err);
-        res.status(500).json({ error: err.message });
-    }
-});
-// 4. CREAR NUEVA RESERVA (RF-07, RF-08)
-app.post('/api/reservas', async (req, res) => {
-    const { nombre, telefono, idServicio, idZona, fecha, hora, direccion } = req.body;
-
-    try {
-        const pool = await getPool();
-
-        // Registrar o consultar cliente
-        const clienteResult = await pool.request()
-            .input('telefono', sql.NVarChar, telefono)
-            .query("SELECT IdCliente FROM Clientes WHERE Telefono = @telefono");
-
-        let idCliente;
-        if (clienteResult.recordset.length === 0) {
-            const nuevoCliente = await pool.request()
-                .input('nombre', sql.NVarChar, nombre)
-                .input('telefono', sql.NVarChar, telefono)
-                .query("INSERT INTO Clientes (Nombre, Telefono) OUTPUT INSERTED.IdCliente VALUES (@nombre, @telefono)");
-            idCliente = nuevoCliente.recordset[0].IdCliente;
-        } else {
-            idCliente = clienteResult.recordset[0].IdCliente;
-        }
-
-        // Insertar reserva en estado PENDIENTE
-        await pool.request()
-            .input('idCliente', sql.Int, idCliente)
-            .input('idServicio', sql.Int, idServicio)
-            .input('idZona', sql.Int, idZona)
-            .input('fecha', sql.Date, fecha)
-            .input('hora', sql.NVarChar, hora) // ver nota abajo
-            .input('direccion', sql.NVarChar, direccion)
-            .query(`INSERT INTO Reservas (IdCliente, IdServicio, IdZona, FechaCita, HoraCita, DireccionServicio, Estado)
-                    VALUES (@idCliente, @idServicio, @idZona, @fecha, @hora, @direccion, 'Pendiente')`);
-
-        res.status(201).json({ message: 'Reserva registrada como Pendiente' });
-    } catch (err) {
-        console.error("Error al crear reserva:", err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// 6. CAMBIAR ESTADO DE RESERVA CON VALIDACIÓN DE SUPERPOSICIÓN (RF-10, RF-14)
 app.put('/api/reservas/:id/estado', async (req, res) => {
     const idReserva = req.params.id;
     const { estado } = req.body;
@@ -164,23 +268,22 @@ app.put('/api/reservas/:id/estado', async (req, res) => {
         if (estado === 'Confirmada') {
             const citaActual = await pool.request()
                 .input('idReserva', sql.Int, idReserva)
-                .query("SELECT FechaCita, HoraCita FROM Reservas WHERE IdReserva = @idReserva");
+                .query(`SELECT CONVERT(VARCHAR(10), FechaCita, 23) AS Fecha,
+                               CONVERT(VARCHAR(8),  HoraCita, 108) AS Hora
+                        FROM Reservas WHERE IdReserva = @idReserva`);
 
             if (citaActual.recordset.length === 0) {
                 return res.status(404).json({ message: 'Reserva no encontrada.' });
             }
-
-            const { FechaCita, HoraCita } = citaActual.recordset[0];
+            const { Fecha, Hora } = citaActual.recordset[0];
 
             const colision = await pool.request()
-                .input('fecha', sql.Date, FechaCita)
-                .input('hora', sql.NVarChar, HoraCita instanceof Date
-                    ? HoraCita.toISOString().substring(11, 19)
-                    : String(HoraCita))
+                .input('fecha', sql.NVarChar, Fecha)
+                .input('hora', sql.NVarChar, Hora)
                 .input('idReserva', sql.Int, idReserva)
                 .query(`SELECT COUNT(*) AS Conteo FROM Reservas
                         WHERE FechaCita = @fecha AND HoraCita = @hora
-                        AND Estado = 'Confirmada' AND IdReserva != @idReserva`);
+                        AND Estado = 'Confirmada' AND IdReserva <> @idReserva`);
 
             if (colision.recordset[0].Conteo > 0) {
                 return res.status(400).json({ message: 'Ya existe una cita confirmada en ese mismo horario.' });
@@ -199,7 +302,24 @@ app.put('/api/reservas/:id/estado', async (req, res) => {
     }
 });
 
-// Probar la conexión al arrancar para ver el error de inmediato
+app.delete('/api/reservas/:id', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request()
+            .input('idReserva', sql.Int, req.params.id)
+            .query("DELETE FROM Reservas WHERE IdReserva = @idReserva");
+
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ message: 'Reserva no encontrada.' });
+        }
+        res.json({ message: 'Reserva eliminada' });
+    } catch (err) {
+        console.error("Error al eliminar reserva:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ---------- ARRANQUE ----------
 getPool()
     .then(() => console.log('Conectado a SQL Server (BarberiaDB)'))
     .catch(err => console.error('No se pudo conectar a SQL Server:', err.message));
