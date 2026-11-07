@@ -57,14 +57,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* ---------- SERVICIOS ---------- */
 async function cargarServicios() {
-  let servicios = SERVICIOS_DEFAULT;
+  let servicios = SERVICIOS_DEFAULT;   // solo si el servidor no responde
 
   try {
     const res = await fetch(`${API_URL}/servicios`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.length > 0) servicios = data;
-    }
+    if (res.ok) servicios = await res.json();   // aunque venga vacía, se respeta
   } catch (err) {
     console.warn("Usando datos locales de servicios por respaldo de red.");
   }
@@ -75,6 +72,11 @@ async function cargarServicios() {
 
   container.innerHTML = '';
   select.innerHTML = '<option value="" disabled selected>-- Elige un servicio --</option>';
+
+  if (servicios.length === 0) {
+    container.innerHTML = '<p>Pronto publicaremos nuestros servicios.</p>';
+    return;
+  }
 
   servicios.forEach(s => {
     const precio = Number(s.PrecioCordobas !== undefined ? s.PrecioCordobas : (s.Precio || 0)).toFixed(2);
@@ -88,11 +90,9 @@ async function cargarServicios() {
         <span class="price">C$ ${precio} NIO</span>
       </div>
     `;
-    // value = ID numérico (es lo que necesita la base de datos)
     select.innerHTML += `<option value="${s.IdServicio}">${escapeHtml(s.Nombre)} (C$ ${precio})</option>`;
   });
 }
-
 /* ---------- ZONAS ---------- */
 async function cargarZonas() {
   const select = document.getElementById('zonaSelect');
@@ -122,14 +122,11 @@ async function cargarZonas() {
 
 /* ---------- PROMOCIONES ---------- */
 async function cargarPromociones() {
-  let promos = PROMOS_DEFAULT;
+  let promos = PROMOS_DEFAULT;   // solo si el servidor no responde
 
   try {
     const res = await fetch(`${API_URL}/promociones`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.length > 0) promos = data;
-    }
+    if (res.ok) promos = await res.json();   // aunque venga vacía, se respeta
   } catch (err) {
     console.warn("Usando datos locales de promociones por respaldo de red.");
   }
@@ -137,7 +134,10 @@ async function cargarPromociones() {
   const container = document.getElementById('promosContainer');
   if (!container) return;
 
-  container.innerHTML = '';
+  container.innerHTML = promos.length === 0
+    ? '<p>No hay promociones activas por ahora.</p>'
+    : '';
+
   promos.forEach(p => {
     container.innerHTML += `
       <div class="card" style="border-top-color: var(--primary-red);">
@@ -147,7 +147,6 @@ async function cargarPromociones() {
     `;
   });
 }
-
 /* ---------- GPS ---------- */
 function obtenerUbicacionGPS() {
   if (!navigator.geolocation) {

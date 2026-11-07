@@ -346,3 +346,13 @@
 .btn-form { padding: 0.7rem 1.2rem; font-size: 0.85rem; }
 .tabla-catalogo { max-height: 280px; margin-bottom: 1rem; }
 .tabla-catalogo .table-msg { padding: 1.2rem 1rem !important; }
+
+[hidden] { display: none !important; }
+.btn-editar { background: var(--secondary-blue); }
+.btn-gris   { background: var(--text-muted); }
+.form-catalogo.editando {
+  background: #EEF2FF;
+  border: 1px dashed var(--secondary-blue);
+  border-radius: 8px;
+  padding: 0.7rem;
+}

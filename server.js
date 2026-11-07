@@ -85,7 +85,7 @@ app.get('/api/promociones', async (req, res) => {
     try {
         const pool = await getPool();
         const result = await pool.request().query(
-            "SELECT IdPromocion, Titulo, Descripcion FROM Promociones WHERE Activa = 1 ORDER BY IdPromocion");
+            "SELECT IdPromocion, Titulo, Descripcion, Valor FROM Promociones WHERE Activa = 1 ORDER BY IdPromocion");
         res.json(result.recordset);
     } catch (err) {
         console.error("Error en promociones:", err);
@@ -94,7 +94,7 @@ app.get('/api/promociones', async (req, res) => {
 });
 
 app.post('/api/promociones', async (req, res) => {
-    const { titulo, descripcion } = req.body;
+    const { titulo, descripcion, valor } = req.body;
     if (!titulo || !titulo.trim() || !descripcion || !descripcion.trim()) {
         return res.status(400).json({ message: 'Indica un título y una descripción.' });
     }
@@ -103,7 +103,8 @@ app.post('/api/promociones', async (req, res) => {
         await pool.request()
             .input('titulo', sql.NVarChar, titulo.trim())
             .input('descripcion', sql.NVarChar, descripcion.trim())
-            .query("INSERT INTO Promociones (Titulo, Descripcion, Activa) VALUES (@titulo, @descripcion, 1)");
+            .input('valor', sql.NVarChar, (valor || '').trim())
+            .query("INSERT INTO Promociones (Titulo, Descripcion, Valor, Activa) VALUES (@titulo, @descripcion, @valor, 1)");
         res.status(201).json({ message: 'Promoción agregada.' });
     } catch (err) {
         console.error("Error al agregar promoción:", err);
@@ -123,6 +124,56 @@ app.delete('/api/promociones/:id', async (req, res) => {
         res.json({ message: 'Promoción quitada de la página.' });
     } catch (err) {
         console.error("Error al quitar promoción:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.put('/api/servicios/:id', async (req, res) => {
+    const { nombre, descripcion, precio } = req.body;
+    const precioNum = Number(precio);
+
+    if (!nombre || !nombre.trim() || !(precioNum > 0)) {
+        return res.status(400).json({ message: 'Indica un nombre y un precio mayor a 0.' });
+    }
+    try {
+        const pool = await getPool();
+        const result = await pool.request()
+            .input('id', sql.Int, req.params.id)
+            .input('nombre', sql.NVarChar, nombre.trim())
+            .input('descripcion', sql.NVarChar, (descripcion || '').trim())
+            .input('precio', sql.Decimal(10, 2), precioNum)
+            .query(`UPDATE Servicios SET Nombre = @nombre, Descripcion = @descripcion, Precio = @precio
+                    WHERE IdServicio = @id AND Activo = 1`);
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ message: 'Corte no encontrado.' });
+        }
+        res.json({ message: 'Corte actualizado.' });
+    } catch (err) {
+        console.error("Error al editar servicio:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.put('/api/promociones/:id', async (req, res) => {
+    const { titulo, descripcion, valor } = req.body;
+    if (!titulo || !titulo.trim() || !descripcion || !descripcion.trim()) {
+        return res.status(400).json({ message: 'Indica un título y una descripción.' });
+    }
+    try {
+        const pool = await getPool();
+        const result = await pool.request()
+            .input('id', sql.Int, req.params.id)
+            .input('titulo', sql.NVarChar, titulo.trim())
+            .input('descripcion', sql.NVarChar, descripcion.trim())
+            .input('valor', sql.NVarChar, (valor || '').trim())
+            .query(`UPDATE Promociones SET Titulo = @titulo, Descripcion = @descripcion, Valor = @valor
+                    WHERE IdPromocion = @id AND Activa = 1`);
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ message: 'Promoción no encontrada.' });
+        }
+        res.json({ message: 'Promoción actualizada.' });
+    } catch (err) {
+        console.error("Error al editar promoción:", err);
         res.status(500).json({ error: err.message });
     }
 });
