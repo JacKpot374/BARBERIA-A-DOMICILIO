@@ -118,37 +118,141 @@ app.post('/api/reservas', async (req, res) => {
 
     try {
         const pool = await getPool();
-
-        // Registrar o consultar cliente
-        const clienteResult = await pool.request()
-            .input('telefono', sql.NVarChar, telefono)
-            .query("SELECT IdCliente FROM Clientes WHERE Telefono = @telefono");
-
-        let idCliente;
-        if (clienteResult.recordset.length === 0) {
-            const nuevoCliente = await pool.request()
-                .input('nombre', sql.NVarChar, nombre)
-                .input('telefono', sql.NVarChar, telefono)
-                .query("INSERT INTO Clientes (Nombre, Telefono) OUTPUT INSERTED.IdCliente VALUES (@nombre, @telefono)");
-            idCliente = nuevoCliente.recordset[0].IdCliente;
-        } else {
-            idCliente = clienteResult.recordset[0].IdCliente;
-        }
-
-        // Insertar reserva en estado PENDIENTE
         await pool.request()
-            .input('idCliente', sql.Int, idCliente)
+            .input('nombre', sql.NVarChar, nombre)
+            .input('telefono', sql.NVarChar, telefono)
             .input('idServicio', sql.Int, idServicio)
             .input('idZona', sql.Int, idZona)
             .input('fecha', sql.Date, fecha)
-            .input('hora', sql.NVarChar, hora) // ver nota abajo
+            .input('hora', sql.NVarChar, hora)
             .input('direccion', sql.NVarChar, direccion)
-            .query(`INSERT INTO Reservas (IdCliente, IdServicio, IdZona, FechaCita, HoraCita, DireccionServicio, Estado)
-                    VALUES (@idCliente, @idServicio, @idZona, @fecha, @hora, @direccion, 'Pendiente')`);
+            .query(`INSERT INTO SolicitudesPendientes
+                    (Nombre, Telefono, IdServicio, IdZona, FechaCita, HoraCita, Direccion)
+                    VALUES (@nombre, @telefono, @idServicio, @idZona, @fecha, @hora, @direccion)`);
 
-        res.status(201).json({ message: 'Reserva registrada como Pendiente' });
+        res.status(201).json({ message: 'Solicitud enviada. Te confirmaremos pronto.' });
     } catch (err) {
-        console.error("Error al crear reserva:", err);
+        console.error("Error al registrar solicitud:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// LISTAR SOLICITUDES POR APROBAR
+app.get('/api/solicitudes', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request().query(`
+            SELECT sp.IdSolicitud,
+                   sp.Nombre   AS Cliente,
+                   sp.Telefono,
+                   s.Nombre    AS Servicio,
+                   CONVERT(VARCHAR(10), sp.FechaCita, 23) AS Fecha,
+                   CONVERT(VARCHAR(5),  sp.HoraCita, 108) AS Hora,
+                   sp.Direccion
+            FROM SolicitudesPendientes sp
+            INNER JOIN Servicios s ON s.IdServicio = sp.IdServicio
+            ORDER BY sp.FechaSolicitud ASC
+        `);
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error al listar solicitudes:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ACEPTAR: recién aquí se guarda en Clientes y Reservas
+app.post('/api/solicitudes/:id/aceptar', async (req, res) => {
+    const tx = new sql.Transaction(await getPool());
+    try {
+        await tx.begin();
+
+        const sol = await new sql.Request(tx)
+            .input('id', sql.Int, req.params.id)
+            .query(`SELECT Nombre, Telefono, IdServicio, IdZona, Direccion,
+                           CONVERT(VARCHAR(10), FechaCita, 23) AS Fecha,
+                           CONVERT(VARCHAR(8),  HoraCita, 108) AS Hora
+                    FROM SolicitudesPendientes WHERE IdSolicitud = @id`);
+
+        if (sol.recordset.length === 0) {
+            await tx.rollback();
+            return res.status(404).json({ message: 'Solicitud no encontrada.' });
+        }
+        const s = sol.recordset[0];
+
+        // Validar choque de horario (RF-14)
+        const colision = await new sql.Request(tx)
+            .input('fecha', sql.NVarChar, s.Fecha)
+            .input('hora', sql.NVarChar, s.Hora)
+            .query(`SELECT COUNT(*) AS Conteo FROM Reservas
+                    WHERE FechaCita = @fecha AND HoraCita = @hora AND Estado = 'Confirmada'`);
+        if (colision.recordset[0].Conteo > 0) {
+            await tx.rollback();
+            return res.status(400).json({ message: 'Ya existe una cita confirmada en ese mismo horario.' });
+        }
+
+        // Cliente: buscar o crear
+        const cli = await new sql.Request(tx)
+            .input('telefono', sql.NVarChar, s.Telefono)
+            .query("SELECT IdCliente FROM Clientes WHERE Telefono = @telefono");
+
+        let idCliente;
+        if (cli.recordset.length === 0) {
+            const nuevo = await new sql.Request(tx)
+                .input('nombre', sql.NVarChar, s.Nombre)
+                .input('telefono', sql.NVarChar, s.Telefono)
+                .query("INSERT INTO Clientes (Nombre, Telefono) OUTPUT INSERTED.IdCliente VALUES (@nombre, @telefono)");
+            idCliente = nuevo.recordset[0].IdCliente;
+        } else {
+            idCliente = cli.recordset[0].IdCliente;
+        }
+
+        // Guardar la reserva ya CONFIRMADA
+        await new sql.Request(tx)
+            .input('idCliente', sql.Int, idCliente)
+            .input('idServicio', sql.Int, s.IdServicio)
+            .input('idZona', sql.Int, s.IdZona)
+            .input('fecha', sql.NVarChar, s.Fecha)
+            .input('hora', sql.NVarChar, s.Hora)
+            .input('direccion', sql.NVarChar, s.Direccion)
+            .query(`INSERT INTO Reservas (IdCliente, IdServicio, IdZona, FechaCita, HoraCita, DireccionServicio, Estado)
+                    VALUES (@idCliente, @idServicio, @idZona, @fecha, @hora, @direccion, 'Confirmada')`);
+
+        // Quitar de la lista de espera
+        await new sql.Request(tx)
+            .input('id', sql.Int, req.params.id)
+            .query("DELETE FROM SolicitudesPendientes WHERE IdSolicitud = @id");
+
+        await tx.commit();
+        res.json({ message: 'Cita aceptada y guardada.' });
+    } catch (err) {
+        try { await tx.rollback(); } catch (_) {}
+        console.error("Error al aceptar solicitud:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// RECHAZAR: no se guarda en Reservas; devuelve datos para avisar a la persona
+app.post('/api/solicitudes/:id/rechazar', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const sol = await pool.request()
+            .input('id', sql.Int, req.params.id)
+            .query(`SELECT Nombre, Telefono,
+                           CONVERT(VARCHAR(10), FechaCita, 23) AS Fecha,
+                           CONVERT(VARCHAR(5),  HoraCita, 108) AS Hora
+                    FROM SolicitudesPendientes WHERE IdSolicitud = @id`);
+
+        if (sol.recordset.length === 0) {
+            return res.status(404).json({ message: 'Solicitud no encontrada.' });
+        }
+
+        await pool.request()
+            .input('id', sql.Int, req.params.id)
+            .query("DELETE FROM SolicitudesPendientes WHERE IdSolicitud = @id");
+
+        res.json({ message: 'Solicitud rechazada.', solicitud: sol.recordset[0] });
+    } catch (err) {
+        console.error("Error al rechazar solicitud:", err);
         res.status(500).json({ error: err.message });
     }
 });
