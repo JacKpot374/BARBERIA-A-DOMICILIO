@@ -29,11 +29,13 @@ function getPool() {
 }
 
 // ---------- CATÁLOGOS ----------
+
+// ---------- SERVICIOS (cortes) ----------
 app.get('/api/servicios', async (req, res) => {
     try {
         const pool = await getPool();
         const result = await pool.request().query(
-            "SELECT IdServicio, Nombre, Descripcion, Precio AS PrecioCordobas FROM Servicios");
+            "SELECT IdServicio, Nombre, Descripcion, Precio AS PrecioCordobas FROM Servicios WHERE Activo = 1 ORDER BY IdServicio");
         res.json(result.recordset);
     } catch (err) {
         console.error("Error en servicios:", err);
@@ -41,13 +43,116 @@ app.get('/api/servicios', async (req, res) => {
     }
 });
 
+app.post('/api/servicios', async (req, res) => {
+    const { nombre, descripcion, precio } = req.body;
+    const precioNum = Number(precio);
+
+    if (!nombre || !nombre.trim() || !(precioNum > 0)) {
+        return res.status(400).json({ message: 'Indica un nombre y un precio mayor a 0.' });
+    }
+    try {
+        const pool = await getPool();
+        await pool.request()
+            .input('nombre', sql.NVarChar, nombre.trim())
+            .input('descripcion', sql.NVarChar, (descripcion || '').trim())
+            .input('precio', sql.Decimal(10, 2), precioNum)
+            .query("INSERT INTO Servicios (Nombre, Descripcion, Precio, Activo) VALUES (@nombre, @descripcion, @precio, 1)");
+        res.status(201).json({ message: 'Corte agregado.' });
+    } catch (err) {
+        console.error("Error al agregar servicio:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/servicios/:id', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request()
+            .input('id', sql.Int, req.params.id)
+            .query("UPDATE Servicios SET Activo = 0 WHERE IdServicio = @id AND Activo = 1");
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ message: 'Corte no encontrado.' });
+        }
+        res.json({ message: 'Corte quitado de la página.' });
+    } catch (err) {
+        console.error("Error al quitar servicio:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ---------- PROMOCIONES ----------
 app.get('/api/promociones', async (req, res) => {
     try {
         const pool = await getPool();
-        const result = await pool.request().query("SELECT * FROM Promociones WHERE Activa = 1");
+        const result = await pool.request().query(
+            "SELECT IdPromocion, Titulo, Descripcion FROM Promociones WHERE Activa = 1 ORDER BY IdPromocion");
         res.json(result.recordset);
     } catch (err) {
         console.error("Error en promociones:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/promociones', async (req, res) => {
+    const { titulo, descripcion } = req.body;
+    if (!titulo || !titulo.trim() || !descripcion || !descripcion.trim()) {
+        return res.status(400).json({ message: 'Indica un título y una descripción.' });
+    }
+    try {
+        const pool = await getPool();
+        await pool.request()
+            .input('titulo', sql.NVarChar, titulo.trim())
+            .input('descripcion', sql.NVarChar, descripcion.trim())
+            .query("INSERT INTO Promociones (Titulo, Descripcion, Activa) VALUES (@titulo, @descripcion, 1)");
+        res.status(201).json({ message: 'Promoción agregada.' });
+    } catch (err) {
+        console.error("Error al agregar promoción:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/promociones/:id', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request()
+            .input('id', sql.Int, req.params.id)
+            .query("UPDATE Promociones SET Activa = 0 WHERE IdPromocion = @id AND Activa = 1");
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ message: 'Promoción no encontrada.' });
+        }
+        res.json({ message: 'Promoción quitada de la página.' });
+    } catch (err) {
+        console.error("Error al quitar promoción:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ---------- GRÁFICO: citas por día (próximos 14 días) ----------
+app.get('/api/estadisticas/dias', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request().query(`
+            SELECT Fecha, SUM(Total) AS Total FROM (
+                SELECT CONVERT(VARCHAR(10), FechaCita, 23) AS Fecha, COUNT(*) AS Total
+                FROM Reservas
+                WHERE Estado <> 'Cancelada'
+                  AND FechaCita >= CAST(GETDATE() AS DATE)
+                  AND FechaCita <  DATEADD(DAY, 14, CAST(GETDATE() AS DATE))
+                GROUP BY CONVERT(VARCHAR(10), FechaCita, 23)
+                UNION ALL
+                SELECT CONVERT(VARCHAR(10), FechaCita, 23), COUNT(*)
+                FROM SolicitudesPendientes
+                WHERE Estado = 'Pendiente'
+                  AND FechaCita >= CAST(GETDATE() AS DATE)
+                  AND FechaCita <  DATEADD(DAY, 14, CAST(GETDATE() AS DATE))
+                GROUP BY CONVERT(VARCHAR(10), FechaCita, 23)
+            ) t
+            GROUP BY Fecha
+            ORDER BY Fecha
+        `);
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error en estadísticas:", err);
         res.status(500).json({ error: err.message });
     }
 });

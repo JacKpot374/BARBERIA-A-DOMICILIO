@@ -267,3 +267,82 @@
 }
 .tabla-solicitudes { max-height: 320px; margin-bottom: 1rem; }
 .tabla-solicitudes .table-msg { padding: 1.2rem 1rem !important; }
+
+/* ---------- Gráfico de actividad ---------- */
+.grafico-wrap {
+  background: var(--bg-pattern);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.2rem 1rem 0.8rem;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+}
+.grafico-dias {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  height: 220px;
+  min-width: 640px;
+  border-bottom: 2px solid var(--border);
+}
+.barra-col {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+}
+.barra-valor { font-size: 0.8rem; font-weight: 800; color: var(--primary-blue); }
+.barra {
+  width: 100%;
+  max-width: 44px;
+  min-height: 4px;
+  background: linear-gradient(to top, var(--secondary-blue), var(--primary-blue));
+  border-radius: 6px 6px 0 0;
+  transition: height 0.5s ease;
+}
+.barra.vacia { background: var(--border); }
+.barra.hoy   { background: linear-gradient(to top, #991B1B, var(--primary-red)); }
+.grafico-etiquetas {
+  display: flex;
+  gap: 0.5rem;
+  min-width: 640px;
+  margin-top: 0.4rem;
+}
+.grafico-etiquetas span {
+  flex: 1;
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+.grafico-etiquetas b { display: block; color: var(--text-dark); font-size: 0.78rem; }
+
+/* ---------- Gestión de cortes y promociones ---------- */
+.form-catalogo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.9rem;
+}
+.form-catalogo input {
+  flex: 1 1 200px;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: var(--bg-pattern);
+  color: var(--text-dark);
+}
+.form-catalogo input[type="number"] { flex: 0 1 150px; }
+.form-catalogo input:focus {
+  border-color: var(--primary-red);
+  background: #fff;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+}
+.btn-form { padding: 0.7rem 1.2rem; font-size: 0.85rem; }
+.tabla-catalogo { max-height: 280px; margin-bottom: 1rem; }
+.tabla-catalogo .table-msg { padding: 1.2rem 1rem !important; }

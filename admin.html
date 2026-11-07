@@ -39,19 +39,20 @@
         </div>
       </section>
 
-      <!-- CUADRO DE ESPERA -->
+      <!-- Gráfico -->
+      <h3 class="subtitulo-tabla">📊 Actividad de los próximos 14 días</h3>
+      <div class="grafico-wrap">
+        <div id="graficoDias" class="grafico-dias"></div>
+      </div>
+
+      <!-- Solicitudes por aprobar -->
       <h3 class="subtitulo-tabla">📩 Solicitudes por aprobar</h3>
       <div class="table-responsive tabla-solicitudes">
         <table>
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Cliente</th>
-              <th>Teléfono</th>
-              <th>Servicio</th>
-              <th>Fecha / Hora</th>
-              <th>Dirección</th>
-              <th>Acciones</th>
+              <th>ID</th><th>Cliente</th><th>Teléfono</th><th>Servicio</th>
+              <th>Fecha / Hora</th><th>Dirección</th><th>Acciones</th>
             </tr>
           </thead>
           <tbody id="solicitudesContainer">
@@ -60,9 +61,8 @@
         </table>
       </div>
 
+      <!-- Citas registradas -->
       <h3 class="subtitulo-tabla">✅ Citas registradas</h3>
-
-      <!-- Filtros -->
       <section class="toolbar">
         <input type="search" id="buscador" placeholder="Buscar por cliente, teléfono o servicio...">
         <select id="filtroEstado">
@@ -75,23 +75,53 @@
         <button id="btnRecargar" class="btn-action btn-recargar">↻ Recargar</button>
       </section>
 
-      <!-- Tabla de citas -->
       <div class="table-responsive">
         <table>
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Cliente</th>
-              <th>Teléfono</th>
-              <th>Servicio</th>
-              <th>Fecha / Hora</th>
-              <th>Dirección</th>
-              <th>Estado</th>
-              <th>Acciones</th>
+              <th>ID</th><th>Cliente</th><th>Teléfono</th><th>Servicio</th>
+              <th>Fecha / Hora</th><th>Dirección</th><th>Estado</th><th>Acciones</th>
             </tr>
           </thead>
           <tbody id="adminReservasContainer">
             <tr><td colspan="8" class="table-msg">Cargando citas...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Cortes -->
+      <h3 class="subtitulo-tabla">💈 Cortes y servicios (se muestran en la página)</h3>
+      <form id="formServicio" class="form-catalogo">
+        <input type="text"   id="svNombre"      placeholder="Nombre del corte" required maxlength="100">
+        <input type="text"   id="svDescripcion" placeholder="Descripción" maxlength="250">
+        <input type="number" id="svPrecio"      placeholder="Precio C$" min="1" step="0.01" required>
+        <button type="submit" class="btn-action btn-confirmar btn-form">+ Agregar corte</button>
+      </form>
+      <div class="table-responsive tabla-catalogo">
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Nombre</th><th>Descripción</th><th>Precio</th><th>Acciones</th></tr>
+          </thead>
+          <tbody id="serviciosAdminContainer">
+            <tr><td colspan="5" class="table-msg">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Promociones -->
+      <h3 class="subtitulo-tabla">🏷️ Promociones (se muestran en la página)</h3>
+      <form id="formPromo" class="form-catalogo">
+        <input type="text" id="prTitulo"      placeholder="Título de la promoción" required maxlength="100">
+        <input type="text" id="prDescripcion" placeholder="Descripción" required maxlength="250">
+        <button type="submit" class="btn-action btn-confirmar btn-form">+ Agregar promoción</button>
+      </form>
+      <div class="table-responsive tabla-catalogo">
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Título</th><th>Descripción</th><th>Acciones</th></tr>
+          </thead>
+          <tbody id="promosAdminContainer">
+            <tr><td colspan="4" class="table-msg">Cargando...</td></tr>
           </tbody>
         </table>
       </div>
