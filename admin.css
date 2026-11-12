@@ -356,3 +356,189 @@
   border-radius: 8px;
   padding: 0.7rem;
 }
+
+/* ---------- Inicio de sesión ---------- */
+body.bloqueado .admin-main { display: none; }
+
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.97), rgba(30, 58, 138, 0.95));
+}
+.login-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--bg-white);
+  border-radius: 12px;
+  border-top: 5px solid var(--primary-red);
+  box-shadow: var(--shadow);
+  padding: 2rem;
+}
+.login-card h2 { color: var(--primary-blue); font-size: 1.6rem; margin-bottom: 0.2rem; }
+.login-card h2 span { color: var(--primary-red); }
+.login-card > p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.2rem; }
+.login-card label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--primary-blue);
+  margin: 0.8rem 0 0.3rem;
+}
+.login-card input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  background: var(--bg-pattern);
+}
+.login-card input:focus {
+  border-color: var(--primary-red);
+  background: #fff;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+}
+.login-card .btn-primary { margin-top: 1.2rem; }
+.login-card .btn-primary:disabled { opacity: 0.6; cursor: wait; }
+.login-error { min-height: 1.2rem; margin-top: 0.7rem; color: var(--primary-red); font-size: 0.85rem; font-weight: 600; }
+
+/* Navbar con dos botones */
+.nav-acciones { display: flex; gap: 0.6rem; align-items: center; }
+.navbar button.btn-outline { cursor: pointer; font-family: inherit; }
+
+/* ---------- Imágenes ---------- */
+.form-catalogo select {
+  flex: 1 1 200px;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: var(--bg-pattern);
+  color: var(--text-dark);
+}
+.form-catalogo input[type="file"] { flex: 1 1 240px; padding: 0.55rem 0.9rem; background: #fff; }
+.nota-form { font-size: 0.8rem; color: var(--text-muted); margin: -0.2rem 0 0.8rem; }
+.miniatura {
+  width: 90px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #000;
+  display: block;
+}
+.tag-seccion {
+  display: inline-block;
+  padding: 0.2rem 0.7rem;
+  border-radius: 20px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  background: #DBEAFE;
+  color: var(--secondary-blue);
+}
+.tag-seccion.portada { background: #FEE2E2; color: #991B1B; }
+
+/* ---------- Horarios ---------- */
+.form-horario { margin-bottom: 0.4rem; }
+.dias-check {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+.dias-check label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--bg-pattern);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--primary-blue);
+  cursor: pointer;
+}
+.dias-check label:has(input:checked) {
+  background: var(--primary-blue);
+  border-color: var(--primary-blue);
+  color: #fff;
+}
+.campo-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 0 1 170px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.campo-mini input, .campo-mini select { flex: none; width: 100%; text-transform: none; }
+
+.horarios-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+.dia-card {
+  background: var(--bg-pattern);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--primary-blue);
+  border-radius: 10px;
+  padding: 0.8rem 1rem;
+}
+.dia-cab {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.6rem;
+  color: var(--primary-blue);
+}
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--primary-red);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-link:hover { text-decoration: underline; }
+.chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.3rem 0.25rem 0.7rem;
+  border-radius: 20px;
+  background: #DBEAFE;
+  color: var(--secondary-blue);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.chip-x {
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--secondary-blue);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.chip-x:hover { background: var(--primary-red); color: #fff; }
+.sin-horario { font-size: 0.8rem; color: var(--text-muted); }
+
+/* Ventana de cambiar contraseña */
+.modal-botones { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 1.2rem; }
+
+.nav-acciones { display: flex; gap: 0.6rem; align-items: center; }
+.navbar button.btn-outline { cursor: pointer; font-family: inherit; }

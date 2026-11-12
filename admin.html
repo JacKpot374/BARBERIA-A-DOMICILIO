@@ -7,11 +7,48 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="admin.css">
 </head>
-<body>
+<body class="bloqueado">
 
-  <header class="navbar">
+  <!-- INICIO DE SESIÓN -->
+  <div id="loginOverlay" class="login-overlay" hidden>
+    <form id="formLogin" class="login-card" autocomplete="on">
+      <h2>Barber <span>Drive</span></h2>
+      <p>Acceso para administradores</p>
+      <label for="loginUsuario">Usuario</label>
+      <input type="text" id="loginUsuario" autocomplete="username" required>
+      <label for="loginClave">Contraseña</label>
+      <input type="password" id="loginClave" autocomplete="current-password" required>
+      <p id="loginError" class="login-error" role="alert"></p>
+      <button type="submit" id="loginBtn" class="btn-primary">Entrar</button>
+    </form>
+  </div>
+
+    <!-- CAMBIAR CONTRASEÑA -->
+  <div id="modalClave" class="login-overlay" hidden>
+    <form id="formClave" class="login-card">
+      <h2>Cambiar <span>contraseña</span></h2>
+      <p>Mínimo 8 caracteres</p>
+      <label for="clActual">Contraseña actual</label>
+      <input type="password" id="clActual" autocomplete="current-password" required>
+      <label for="clNueva">Nueva contraseña</label>
+      <input type="password" id="clNueva" autocomplete="new-password" minlength="8" required>
+      <label for="clRepetir">Repite la nueva contraseña</label>
+      <input type="password" id="clRepetir" autocomplete="new-password" minlength="8" required>
+      <p id="clError" class="login-error" role="alert"></p>
+      <div class="modal-botones">
+        <button type="button" id="clCancelar" class="btn-action btn-gris btn-form">Cancelar</button>
+        <button type="submit" id="clGuardar" class="btn-action btn-confirmar btn-form">Guardar</button>
+      </div>
+    </form>
+  </div>
+
+    <header class="navbar">
     <div class="logo">Barber <span>Drive Admin</span></div>
-    <a href="index.html" class="btn-outline">Ver Sitio Web</a>
+    <div class="nav-acciones">
+      <a href="index.html" class="btn-outline">Ver Sitio Web</a>
+      <button type="button" id="btnClave" class="btn-outline">Cambiar contraseña</button>
+      <button type="button" id="btnSalir" class="btn-outline">Cerrar sesión</button>
+    </div>
   </header>
 
   <main class="admin-main">
@@ -128,11 +165,95 @@
           </tbody>
         </table>
       </div>
+
+            <!-- Días y horarios -->
+      <h3 class="subtitulo-tabla">🕒 Días y horarios disponibles para citas</h3>
+      <form id="formHorario" class="form-horario">
+        <div class="dias-check">
+          <label><input type="checkbox" name="dia" value="1"> Lun</label>
+          <label><input type="checkbox" name="dia" value="2"> Mar</label>
+          <label><input type="checkbox" name="dia" value="3"> Mié</label>
+          <label><input type="checkbox" name="dia" value="4"> Jue</label>
+          <label><input type="checkbox" name="dia" value="5"> Vie</label>
+          <label><input type="checkbox" name="dia" value="6"> Sáb</label>
+          <label><input type="checkbox" name="dia" value="0"> Dom</label>
+        </div>
+        <div class="form-catalogo">
+          <label class="campo-mini">Primera cita
+            <input type="time" id="hrDesde" value="08:00" required>
+          </label>
+          <label class="campo-mini">Última cita
+            <input type="time" id="hrHasta" value="17:00" required>
+          </label>
+          <label class="campo-mini">Una cita cada
+            <select id="hrCada">
+              <option value="30">30 minutos</option>
+              <option value="45">45 minutos</option>
+              <option value="60" selected>1 hora</option>
+              <option value="90">1 hora 30 min</option>
+              <option value="120">2 horas</option>
+            </select>
+          </label>
+          <button type="submit" id="hrBtn" class="btn-action btn-confirmar btn-form">+ Agregar horarios</button>
+        </div>
+      </form>
+      <p class="nota-form">Marca los días, elige el rango y el intervalo. Los días sin horarios no aceptan citas. Quitar un horario no cancela las citas que ya existen.</p>
+      <div id="horariosContainer" class="horarios-grid">
+        <p class="table-msg">Cargando...</p>
+      </div>
+
+      <!-- Distritos -->
+      <h3 class="subtitulo-tabla">📍 Distritos de cobertura (se muestran en el formulario)</h3>
+      <form id="formZona" class="form-catalogo">
+        <input type="text"   id="zNombre" placeholder="Nombre del distrito (ej: Distrito III - Nejapa)" required maxlength="100">
+        <input type="number" id="zCosto"  placeholder="Costo C$" min="0" step="0.01" required>
+        <button type="submit" id="zBtnGuardar" class="btn-action btn-confirmar btn-form">+ Agregar distrito</button>
+        <button type="button" id="zBtnCancelar" class="btn-action btn-gris btn-form" hidden>Cancelar</button>
+      </form>
+      <div class="table-responsive tabla-catalogo">
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Distrito</th><th>Costo</th><th>Acciones</th></tr>
+          </thead>
+          <tbody id="zonasAdminContainer">
+            <tr><td colspan="4" class="table-msg">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Imágenes -->
+      <h3 class="subtitulo-tabla">🖼️ Imágenes del sitio (solo archivos de tu computadora)</h3>
+      <form id="formImagen" class="form-catalogo">
+        <select id="imSeccion">
+          <option value="galeria">Galería (Trabajos Recientes)</option>
+          <option value="portada">Portada (foto principal)</option>
+        </select>
+        <input type="text" id="imTitulo" placeholder="Título (ej: Skin Fade)" maxlength="100">
+        <input type="file" id="imArchivo" accept="image/jpeg,image/png,image/webp">
+        <button type="submit" id="imBtnGuardar" class="btn-action btn-confirmar btn-form">+ Subir imagen</button>
+        <button type="button" id="imBtnCancelar" class="btn-action btn-gris btn-form" hidden>Cancelar</button>
+      </form>
+      <p class="nota-form" id="imNota">JPG, PNG o WEBP de hasta 5 MB. La portada es una sola: la nueva reemplaza a la anterior.</p>
+      <div class="table-responsive tabla-catalogo">
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Vista previa</th><th>Sección</th><th>Título</th><th>Acciones</th></tr>
+          </thead>
+          <tbody id="imagenesAdminContainer">
+            <tr><td colspan="5" class="table-msg">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
     </div>
   </main>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <!-- El orden importa: auth.js primero -->
+  <script src="auth.js"></script>
   <script src="admin.js"></script>
+  <script src="admin-extra.js"></script>
+  <script src="admin-horarios.js"></script>
 </body>
 </html>

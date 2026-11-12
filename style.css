@@ -135,3 +135,41 @@ footer { background: #070B14; color: #94A3B8; text-align: center; padding: 1.5re
 }
 .toast-cliente.show { opacity: 1; transform: translate(-50%, 0); }
 .toast-cliente.error { border-left-color: var(--primary-red); }
+
+/* ---------- Horarios de atención (sitio) ---------- */
+.horarios-sitio {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 1rem;
+}
+.dia-sitio {
+  background: #F8FAFC;
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--primary-blue);
+  border-radius: 8px;
+  padding: 1rem;
+}
+.dia-sitio h3 { font-size: 1rem; color: var(--primary-blue); margin-bottom: 0.6rem; }
+.dia-sitio.hoy { border-top-color: var(--primary-red); background: #FFF5F5; }
+.dia-sitio.hoy h3::after {
+  content: "HOY";
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 20px;
+  background: var(--primary-red);
+  color: #fff;
+  font-size: 0.65rem;
+  vertical-align: middle;
+}
+.dia-sitio.cerrado { border-top-color: var(--border); }
+.dia-sitio.cerrado p { color: var(--text-muted); font-size: 0.85rem; }
+.chips-sitio { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.chip-sitio {
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  background: #DBEAFE;
+  color: var(--secondary-blue);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.horarios-nota { margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted); }

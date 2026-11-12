@@ -1,4 +1,5 @@
 const API_URL = "http://localhost:3000/api";
+const BASE_URL = API_URL.replace(/\/api$/, '');
 
 // DATOS DE RESPALDO (para que la interfaz nunca quede en blanco)
 const SERVICIOS_DEFAULT = [
@@ -41,6 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
   cargarServicios();
   cargarZonas();
   cargarPromociones();
+  cargarImagenesSitio()
+  cargarHorarioSemanal();
 
   const hoy = fechaLocalHoy();
   const campoFecha = document.getElementById('fechaCita');
@@ -102,24 +105,53 @@ async function cargarZonas() {
     const res = await fetch(`${API_URL}/zonas`);
     if (!res.ok) throw new Error(`Error ${res.status}`);
     const zonas = await res.json();
-    if (!zonas || zonas.length === 0) throw new Error('Sin zonas');
+
+    if (!zonas || zonas.length === 0) {
+      select.innerHTML = '<option value="" disabled selected>No hay distritos disponibles</option>';
+      return;
+    }
 
     select.innerHTML = '<option value="" disabled selected>-- Elige tu Distrito --</option>';
     zonas.forEach(z => {
-      // Nombres de columna tolerantes (ajusta si los tuyos son distintos)
-      const id     = z.IdZona ?? z.Id;
-      const nombre = z.Nombre ?? z.NombreZona ?? z.Distrito ?? `Zona ${id}`;
-      const costo  = z.Costo ?? z.CostoEnvio ?? z.CostoTransporte ?? z.Recargo;
-      const texto  = costo !== undefined && costo !== null
-        ? `${nombre} - C$${Number(costo).toFixed(0)}`
-        : nombre;
-      select.innerHTML += `<option value="${id}">${escapeHtml(texto)}</option>`;
+      const texto = `${z.Nombre} - C$${Number(z.Costo).toFixed(0)}`;
+      select.innerHTML += `<option value="${z.IdZona}">${escapeHtml(texto)}</option>`;
     });
   } catch (err) {
-    console.warn("No se pudieron cargar las zonas desde la BD:", err.message);
+    console.warn("No se pudieron cargar las zonas:", err.message);
+    select.innerHTML = '<option value="" disabled selected>No se pudieron cargar los distritos</option>';
   }
 }
 
+async function cargarImagenesSitio() {
+  try {
+    const res = await fetch(`${API_URL}/imagenes`);
+    if (!res.ok) return;
+    const imagenes = await res.json();
+
+    // Galería: si hay imágenes subidas, reemplazan a las del HTML
+    const galeria = imagenes.filter(i => i.Seccion === 'galeria');
+    const cont = document.querySelector('.gallery-grid');
+    if (cont && galeria.length > 0) {
+      cont.innerHTML = galeria.map(i => `
+        <div class="gallery-item">
+          <img src="${BASE_URL}/uploads/${encodeURIComponent(i.Archivo)}" alt="${escapeHtml(i.Titulo)}">
+          <h3>${escapeHtml(i.Titulo)}</h3>
+        </div>
+      `).join('');
+    }
+
+    // Portada (foto grande del inicio)
+    const portada = imagenes.filter(i => i.Seccion === 'portada').pop();
+    const hero = document.querySelector('.hero');
+    if (hero && portada) {
+      hero.style.background =
+        `linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 58, 138, 0.85)), ` +
+        `url('${BASE_URL}/uploads/${encodeURIComponent(portada.Archivo)}') center/cover`;
+    }
+  } catch (err) {
+    console.warn("No se pudieron cargar las imágenes:", err.message);
+  }
+}
 /* ---------- PROMOCIONES ---------- */
 async function cargarPromociones() {
   let promos = PROMOS_DEFAULT;   // solo si el servidor no responde
@@ -147,6 +179,111 @@ async function cargarPromociones() {
     `;
   });
 }
+
+/* ---------- HORAS DISPONIBLES ---------- */
+function formatearHoraCliente(hora24) {
+  let [h, m] = hora24.split(':').map(Number);
+  const sufijo = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${h}:${String(m).padStart(2, '0')} ${sufijo}`;
+}
+
+async function cargarHoras() {
+  const fecha  = document.getElementById('fechaCita').value;
+  const select = document.getElementById('horaCita');
+  if (!select) return;
+
+  if (!fecha) {
+    select.innerHTML = '<option value="" disabled selected>-- Elige una fecha --</option>';
+    return;
+  }
+
+  select.innerHTML = '<option value="" disabled selected>Cargando horarios...</option>';
+  try {
+    const res = await fetch(`${API_URL}/disponibilidad?fecha=${encodeURIComponent(fecha)}`);
+    if (!res.ok) throw new Error(`Error ${res.status}`);
+    const horas = await res.json();
+
+    if (horas.length === 0) {
+      select.innerHTML = '<option value="" disabled selected>No hay horarios ese día</option>';
+      return;
+    }
+
+    const libres = horas.filter(h => h.disponible).length;
+    select.innerHTML =
+      `<option value="" disabled selected>${libres ? '-- Elige una hora --' : 'Sin horas libres ese día'}</option>` +
+      horas.map(h => `
+        <option value="${h.hora}" ${h.disponible ? '' : 'disabled'}>
+          ${formatearHoraCliente(h.hora)}${h.disponible ? '' : ' (ocupada)'}
+        </option>`).join('');
+  } catch (err) {
+    console.warn('No se pudieron cargar los horarios:', err.message);
+    select.innerHTML = '<option value="" disabled selected>No se pudieron cargar los horarios</option>';
+  }
+}
+  /* ---------- HORARIO SEMANAL (se muestra al cliente) ---------- *
+/* ---------- HORARIO SEMANAL (se muestra al cliente) ---------- */
+function asegurarSeccionHorarios() {
+  let cont = document.getElementById('horariosSitio');
+  if (cont) return cont;
+
+  // Si la sección no está en index.html, se crea debajo de Promociones
+  const seccion = document.createElement('section');
+  seccion.className = 'section-box';
+  seccion.id = 'horarios';
+  seccion.innerHTML = `
+    <h2 class="section-title"><i class="fa-regular fa-clock"></i> Horarios de Atención</h2>
+    <div id="horariosSitio" class="horarios-sitio"><p>Cargando horarios...</p></div>
+    <p class="horarios-nota">Elige tu fecha en el formulario para ver qué horas están libres.</p>
+  `;
+
+  const promos = document.getElementById('promosContainer');
+  const caja = promos ? (promos.closest('.section-box') || promos.parentElement) : null;
+  if (caja) {
+    caja.after(seccion);
+  } else {
+    (document.querySelector('.content-col') || document.querySelector('main') || document.body).appendChild(seccion);
+  }
+  return seccion.querySelector('#horariosSitio');
+}
+
+async function cargarHorarioSemanal() {
+  const nombres = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  const orden   = [1, 2, 3, 4, 5, 6, 0];
+  const aAmPm = (hora24) => {
+    let [h, m] = hora24.split(':').map(Number);
+    const sufijo = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${h}:${String(m).padStart(2, '0')} ${sufijo}`;
+  };
+
+  const cont = asegurarSeccionHorarios();
+
+  try {
+    const res = await fetch(`${API_URL}/horario-semanal`);
+    if (!res.ok) throw new Error(`Error ${res.status}`);
+    const lista = await res.json();
+
+    if (lista.length === 0) {
+      cont.innerHTML = '<p>Pronto publicaremos nuestros horarios.</p>';
+      return;
+    }
+
+    const hoy = new Date().getDay();
+    cont.innerHTML = orden.map(d => {
+      const horas = lista.filter(h => h.DiaSemana === d);
+      const clase = `dia-sitio${d === hoy ? ' hoy' : ''}${horas.length === 0 ? ' cerrado' : ''}`;
+      const contenido = horas.length
+        ? `<div class="chips-sitio">${horas.map(h => `<span class="chip-sitio">${aAmPm(h.Hora)}</span>`).join('')}</div>`
+        : '<p>Sin atención</p>';
+      return `<div class="${clase}"><h3>${nombres[d]}</h3>${contenido}</div>`;
+    }).join('');
+  } catch (err) {
+    console.warn('No se pudo cargar el horario semanal:', err.message);
+    cont.innerHTML = '<p>No se pudieron cargar los horarios. Intenta de nuevo más tarde.</p>';
+  }
+}
+
 /* ---------- GPS ---------- */
 function obtenerUbicacionGPS() {
   if (!navigator.geolocation) {
@@ -180,7 +317,6 @@ async function validarYEnviarReserva(e) {
     return;
   }
 
-  // Teléfono: solo dígitos (se permiten espacios y guiones al escribir)
   const telLimpio = telefono.replace(/[\s-]/g, '');
   if (!/^\d{8,15}$/.test(telLimpio)) {
     avisoCliente('⚠️ El teléfono debe tener solo números (8 dígitos).', 'error');
@@ -215,6 +351,7 @@ async function validarYEnviarReserva(e) {
 
     if (!resp.ok) {
       avisoCliente(data.message || data.error || 'No se pudo enviar la información.', 'error');
+      if (resp.status === 409 || resp.status === 400) cargarHoras();   // refresca las horas ocupadas
       return;
     }
 
@@ -222,6 +359,7 @@ async function validarYEnviarReserva(e) {
     form.reset();
     const campoFecha = document.getElementById('fechaCita');
     if (campoFecha) campoFecha.value = fechaLocalHoy();
+    cargarHoras();
   } catch (err) {
     console.error(err);
     avisoCliente('No se pudo conectar con el servidor.', 'error');
