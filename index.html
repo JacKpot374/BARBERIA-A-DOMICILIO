@@ -18,6 +18,9 @@
       <li><a href="#reserva">Reservar</a></li>
       <li><a href="admin.html" class="btn-admin-link">Panel Admin</a></li>
     </ul>
+    <button type="button" class="menu-toggle" id="menuToggle" aria-label="Abrir menú" aria-expanded="false">
+      <i class="fa-solid fa-bars"></i>
+    </button>
   </header>
 
   <!-- HERO SECTION -->
@@ -48,6 +51,14 @@
         <h2 class="section-title"><i class="fa-solid fa-tags"></i> Promociones Activas</h2>
         <div class="cards-grid" id="promosContainer"></div>
       </section>
+
+      <section class="section-box" id="horarios">
+  <h2 class="section-title"><i class="fa-regular fa-clock"></i> Horarios de Atención</h2>
+  <div id="horariosSitio" class="horarios-sitio">
+    <p>Cargando horarios...</p>
+  </div>
+  <p class="horarios-nota">Elige tu fecha en el formulario para ver qué horas están libres.</p>
+</section>
 
       <!-- GALERÍA (RF-04) -->
       <section class="section-box" id="galeria">

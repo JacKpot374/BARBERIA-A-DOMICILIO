@@ -112,7 +112,33 @@ footer { background: #070B14; color: #94A3B8; text-align: center; padding: 1.5re
   .main-grid-layout { grid-template-columns: 1fr; }
   .sidebar-col { position: static; }
   .gallery-grid { grid-template-columns: 1fr; }
-  .nav-links { display: none; }
+  .navbar { flex-wrap: wrap; }
+  .menu-toggle { display: block; }
+  .nav-links {
+    display: none;
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    margin-top: 0.8rem;
+  }
+  .nav-links.abierto { display: flex; }
+  .nav-links li { border-top: 1px solid rgba(255, 255, 255, 0.12); }
+  .nav-links a { display: block; padding: 0.9rem 0.5rem; }
+  .btn-admin-link { background: rgba(255, 255, 255, 0.1); border-radius: 6px; margin-top: 0.4rem; }
+  /* Botón de menú (solo se ve en pantallas pequeñas) */
+  .menu-toggle {
+    display: none;
+    width: 42px;
+    height: 42px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 6px;
+    color: #fff;
+    font-size: 1.2rem;
+    cursor: pointer;
+  }
+  .menu-toggle:hover { background: var(--primary-red); border-color: var(--primary-red); }
 }
 
 .toast-cliente {

@@ -56,6 +56,19 @@ document.addEventListener('DOMContentLoaded', () => {
   if (form) {
     form.addEventListener('submit', validarYEnviarReserva);
   }
+
+    // Menú en pantallas pequeñas
+  const menuToggle = document.getElementById('menuToggle');
+  const navLinks   = document.querySelector('.nav-links');
+  if (menuToggle && navLinks) {
+    menuToggle.addEventListener('click', () => {
+      const abierto = navLinks.classList.toggle('abierto');
+      menuToggle.setAttribute('aria-expanded', abierto);
+    });
+    navLinks.addEventListener('click', (e) => {
+      if (e.target.closest('a')) navLinks.classList.remove('abierto');
+    });
+  }
 });
 
 /* ---------- SERVICIOS ---------- */

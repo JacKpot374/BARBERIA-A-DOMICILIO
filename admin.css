@@ -542,3 +542,9 @@ body.bloqueado .admin-main { display: none; }
 
 .nav-acciones { display: flex; gap: 0.6rem; align-items: center; }
 .navbar button.btn-outline { cursor: pointer; font-family: inherit; }
+
+@media (max-width: 700px) {
+  .navbar { flex-wrap: wrap; gap: 0.6rem; }
+  .nav-acciones { width: 100%; flex-wrap: wrap; }
+  .nav-acciones .btn-outline { flex: 1 1 auto; text-align: center; }
+}
