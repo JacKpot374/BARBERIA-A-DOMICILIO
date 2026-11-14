@@ -1,16 +1,17 @@
-const API_URL = "http://localhost:3000/api";
-const BASE_URL = API_URL.replace(/\/api$/, '');
+// app.js - sitio público de Barber Drive (config.js debe cargarse ANTES)
+const API_URL  = `${SERVIDOR}/api`;
+const BASE_URL = SERVIDOR;
+const ANIO_RESERVAS = 2026;
 
-// DATOS DE RESPALDO (para que la interfaz nunca quede en blanco)
+// Datos de respaldo: solo se usan si el servidor no responde
 const SERVICIOS_DEFAULT = [
-  { IdServicio: 1, Nombre: "Corte Clásico / Fade", Descripcion: "Lavado, degradado y perfilado a navaja.", PrecioCordobas: 300.00 },
-  { IdServicio: 2, Nombre: "Corte y Perfilado de Barba", Descripcion: "Servicio completo a domicilio + toalla caliente.", PrecioCordobas: 450.00 },
-  { IdServicio: 3, Nombre: "Perfilado de Barba Senior", Descripcion: "Afeitado tradicional y contornos precisos.", PrecioCordobas: 150.00 }
+  { IdServicio: 1, Nombre: "Corte Clásico / Fade", Descripcion: "Lavado, degradado y perfilado a navaja.", PrecioCordobas: 365.00 },
+  { IdServicio: 2, Nombre: "Corte y Perfilado de Barba", Descripcion: "Servicio completo a domicilio + toalla caliente.", PrecioCordobas: 550.00 },
+  { IdServicio: 3, Nombre: "Perfilado de Barba Senior", Descripcion: "Afeitado tradicional y contornos precisos.", PrecioCordobas: 290.00 }
 ];
-
 const PROMOS_DEFAULT = [
-  { Titulo: "Bono Bienvenida", Descripcion: "15% de descuento en tu primer servicio solicitándolo por la web." },
-  { Titulo: "Combo Dúo Familiar", Descripcion: "Dos cortes a domicilio en la misma dirección por solo C$650.00 NIO." }
+  { Titulo: "Bono Bienvenida", Descripcion: "15% de descuento en tu primer servicio solicitándolo por la web.", Valor: "15%" },
+  { Titulo: "Combo Dúo Familiar", Descripcion: "Dos cortes a domicilio en la misma ubicación por solo C$650.00 NIO.", Valor: "C$650" }
 ];
 
 /* ---------- Utilidades ---------- */
@@ -20,21 +21,25 @@ function escapeHtml(texto) {
   }[c]));
 }
 
-// Fecha local (YYYY-MM-DD), no en UTC
 function fechaLocalHoy() {
   const d = new Date();
-  const mes = String(d.getMonth() + 1).padStart(2, '0');
-  const dia = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${mes}-${dia}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function formatearHoraCliente(hora24) {
+  let [h, m] = String(hora24).split(':').map(Number);
+  const sufijo = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${h}:${String(m).padStart(2, '0')} ${sufijo}`;
 }
 
 function avisoCliente(mensaje, tipo = 'ok') {
   const el = document.getElementById('toastCliente');
-  if (!el) { alert(mensaje); return; }   // respaldo si falta el div
+  if (!el) { alert(mensaje); return; }
   el.textContent = mensaje;
   el.className = `toast-cliente show ${tipo}`;
   clearTimeout(avisoCliente.timer);
-  avisoCliente.timer = setTimeout(() => el.classList.remove('show'), 4000);
+  avisoCliente.timer = setTimeout(() => el.classList.remove('show'), 4500);
 }
 
 /* ---------- Inicio ---------- */
@@ -42,22 +47,22 @@ document.addEventListener('DOMContentLoaded', () => {
   cargarServicios();
   cargarZonas();
   cargarPromociones();
-  cargarImagenesSitio()
+  cargarImagenesSitio();
   cargarHorarioSemanal();
 
-  const hoy = fechaLocalHoy();
   const campoFecha = document.getElementById('fechaCita');
   if (campoFecha) {
+    const hoy = fechaLocalHoy();
     campoFecha.setAttribute('min', hoy);
     campoFecha.value = hoy;
+    campoFecha.addEventListener('change', cargarHoras);
+    cargarHoras();
   }
 
   const form = document.getElementById('bookingForm');
-  if (form) {
-    form.addEventListener('submit', validarYEnviarReserva);
-  }
+  if (form) form.addEventListener('submit', validarYEnviarReserva);
 
-    // Menú en pantallas pequeñas
+  // Menú en pantallas pequeñas
   const menuToggle = document.getElementById('menuToggle');
   const navLinks   = document.querySelector('.nav-links');
   if (menuToggle && navLinks) {
@@ -73,30 +78,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* ---------- SERVICIOS ---------- */
 async function cargarServicios() {
-  let servicios = SERVICIOS_DEFAULT;   // solo si el servidor no responde
-
+  let servicios = SERVICIOS_DEFAULT;
   try {
     const res = await fetch(`${API_URL}/servicios`);
-    if (res.ok) servicios = await res.json();   // aunque venga vacía, se respeta
+    if (res.ok) servicios = await res.json();
   } catch (err) {
-    console.warn("Usando datos locales de servicios por respaldo de red.");
+    console.warn("Usando servicios de respaldo:", err.message);
   }
 
   const container = document.getElementById('servicesContainer');
   const select = document.getElementById('servicioSelect');
   if (!container || !select) return;
 
-  container.innerHTML = '';
+  container.innerHTML = servicios.length === 0 ? '<p>Pronto publicaremos nuestros servicios.</p>' : '';
   select.innerHTML = '<option value="" disabled selected>-- Elige un servicio --</option>';
 
-  if (servicios.length === 0) {
-    container.innerHTML = '<p>Pronto publicaremos nuestros servicios.</p>';
-    return;
-  }
-
   servicios.forEach(s => {
-    const precio = Number(s.PrecioCordobas !== undefined ? s.PrecioCordobas : (s.Precio || 0)).toFixed(2);
-
+    const precio = Number(s.PrecioCordobas ?? s.Precio ?? 0).toFixed(2);
     container.innerHTML += `
       <div class="card">
         <div>
@@ -104,12 +102,12 @@ async function cargarServicios() {
           <p>${escapeHtml(s.Descripcion)}</p>
         </div>
         <span class="price">C$ ${precio} NIO</span>
-      </div>
-    `;
+      </div>`;
     select.innerHTML += `<option value="${s.IdServicio}">${escapeHtml(s.Nombre)} (C$ ${precio})</option>`;
   });
 }
-/* ---------- ZONAS ---------- */
+
+/* ---------- DISTRITOS ---------- */
 async function cargarZonas() {
   const select = document.getElementById('zonaSelect');
   if (!select) return;
@@ -119,29 +117,54 @@ async function cargarZonas() {
     if (!res.ok) throw new Error(`Error ${res.status}`);
     const zonas = await res.json();
 
-    if (!zonas || zonas.length === 0) {
+    if (zonas.length === 0) {
       select.innerHTML = '<option value="" disabled selected>No hay distritos disponibles</option>';
       return;
     }
-
     select.innerHTML = '<option value="" disabled selected>-- Elige tu Distrito --</option>';
     zonas.forEach(z => {
       const texto = `${z.Nombre} - C$${Number(z.Costo).toFixed(0)}`;
       select.innerHTML += `<option value="${z.IdZona}">${escapeHtml(texto)}</option>`;
     });
   } catch (err) {
-    console.warn("No se pudieron cargar las zonas:", err.message);
+    console.warn("No se pudieron cargar los distritos:", err.message);
     select.innerHTML = '<option value="" disabled selected>No se pudieron cargar los distritos</option>';
   }
 }
 
+/* ---------- PROMOCIONES ---------- */
+async function cargarPromociones() {
+  let promos = PROMOS_DEFAULT;
+  try {
+    const res = await fetch(`${API_URL}/promociones`);
+    if (res.ok) promos = await res.json();
+  } catch (err) {
+    console.warn("Usando promociones de respaldo:", err.message);
+  }
+
+  const container = document.getElementById('promosContainer');
+  if (!container) return;
+
+  container.innerHTML = promos.length === 0 ? '<p>No hay promociones activas por ahora.</p>' : '';
+  promos.forEach(p => {
+    container.innerHTML += `
+      <div class="card" style="border-top-color: var(--primary-red);">
+        <div>
+          <h3><i class="fa-solid fa-tag"></i> ${escapeHtml(p.Titulo)}</h3>
+          <p>${escapeHtml(p.Descripcion)}</p>
+        </div>
+        ${p.Valor ? `<span class="price">${escapeHtml(p.Valor)}</span>` : ''}
+      </div>`;
+  });
+}
+
+/* ---------- GALERÍA Y PORTADA (imágenes subidas desde el admin) ---------- */
 async function cargarImagenesSitio() {
   try {
     const res = await fetch(`${API_URL}/imagenes`);
     if (!res.ok) return;
     const imagenes = await res.json();
 
-    // Galería: si hay imágenes subidas, reemplazan a las del HTML
     const galeria = imagenes.filter(i => i.Seccion === 'galeria');
     const cont = document.querySelector('.gallery-grid');
     if (cont && galeria.length > 0) {
@@ -149,11 +172,9 @@ async function cargarImagenesSitio() {
         <div class="gallery-item">
           <img src="${BASE_URL}/uploads/${encodeURIComponent(i.Archivo)}" alt="${escapeHtml(i.Titulo)}">
           <h3>${escapeHtml(i.Titulo)}</h3>
-        </div>
-      `).join('');
+        </div>`).join('');
     }
 
-    // Portada (foto grande del inicio)
     const portada = imagenes.filter(i => i.Seccion === 'portada').pop();
     const hero = document.querySelector('.hero');
     if (hero && portada) {
@@ -165,44 +186,59 @@ async function cargarImagenesSitio() {
     console.warn("No se pudieron cargar las imágenes:", err.message);
   }
 }
-/* ---------- PROMOCIONES ---------- */
-async function cargarPromociones() {
-  let promos = PROMOS_DEFAULT;   // solo si el servidor no responde
+
+/* ---------- HORARIO SEMANAL (tarjetas informativas) ---------- */
+function asegurarSeccionHorarios() {
+  let cont = document.getElementById('horariosSitio');
+  if (cont) return cont;
+
+  const seccion = document.createElement('section');
+  seccion.className = 'section-box';
+  seccion.id = 'horarios';
+  seccion.innerHTML = `
+    <h2 class="section-title"><i class="fa-regular fa-clock"></i> Horarios de Atención</h2>
+    <div id="horariosSitio" class="horarios-sitio"><p>Cargando horarios...</p></div>
+    <p class="horarios-nota">Elige tu fecha en el formulario para ver qué horas están libres.</p>`;
+
+  const promos = document.getElementById('promosContainer');
+  const caja = promos ? (promos.closest('.section-box') || promos.parentElement) : null;
+  if (caja) caja.after(seccion);
+  else (document.querySelector('.content-col') || document.querySelector('main') || document.body).appendChild(seccion);
+  return seccion.querySelector('#horariosSitio');
+}
+
+async function cargarHorarioSemanal() {
+  const nombres = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  const orden = [1, 2, 3, 4, 5, 6, 0];
+  const cont = asegurarSeccionHorarios();
 
   try {
-    const res = await fetch(`${API_URL}/promociones`);
-    if (res.ok) promos = await res.json();   // aunque venga vacía, se respeta
+    const res = await fetch(`${API_URL}/horario-semanal`);
+    if (!res.ok) throw new Error(`Error ${res.status}`);
+    const lista = await res.json();
+
+    if (lista.length === 0) {
+      cont.innerHTML = '<p>Pronto publicaremos nuestros horarios.</p>';
+      return;
+    }
+    const hoy = new Date().getDay();
+    cont.innerHTML = orden.map(d => {
+      const horas = lista.filter(h => h.DiaSemana === d);
+      const clase = `dia-sitio${d === hoy ? ' hoy' : ''}${horas.length === 0 ? ' cerrado' : ''}`;
+      const contenido = horas.length
+        ? `<div class="chips-sitio">${horas.map(h => `<span class="chip-sitio">${formatearHoraCliente(h.Hora)}</span>`).join('')}</div>`
+        : '<p>Sin atención</p>';
+      return `<div class="${clase}"><h3>${nombres[d]}</h3>${contenido}</div>`;
+    }).join('');
   } catch (err) {
-    console.warn("Usando datos locales de promociones por respaldo de red.");
+    console.warn('No se pudo cargar el horario semanal:', err.message);
+    cont.innerHTML = '<p>No se pudieron cargar los horarios. Intenta de nuevo más tarde.</p>';
   }
-
-  const container = document.getElementById('promosContainer');
-  if (!container) return;
-
-  container.innerHTML = promos.length === 0
-    ? '<p>No hay promociones activas por ahora.</p>'
-    : '';
-
-  promos.forEach(p => {
-    container.innerHTML += `
-      <div class="card" style="border-top-color: var(--primary-red);">
-        <h3><i class="fa-solid fa-tag"></i> ${escapeHtml(p.Titulo)}</h3>
-        <p>${escapeHtml(p.Descripcion)}</p>
-      </div>
-    `;
-  });
 }
 
-/* ---------- HORAS DISPONIBLES ---------- */
-function formatearHoraCliente(hora24) {
-  let [h, m] = hora24.split(':').map(Number);
-  const sufijo = h >= 12 ? 'PM' : 'AM';
-  h = h % 12 || 12;
-  return `${h}:${String(m).padStart(2, '0')} ${sufijo}`;
-}
-
+/* ---------- HORAS LIBRES DEL DÍA ELEGIDO ---------- */
 async function cargarHoras() {
-  const fecha  = document.getElementById('fechaCita').value;
+  const fecha  = document.getElementById('fechaCita')?.value;
   const select = document.getElementById('horaCita');
   if (!select) return;
 
@@ -221,7 +257,6 @@ async function cargarHoras() {
       select.innerHTML = '<option value="" disabled selected>No hay horarios ese día</option>';
       return;
     }
-
     const libres = horas.filter(h => h.disponible).length;
     select.innerHTML =
       `<option value="" disabled selected>${libres ? '-- Elige una hora --' : 'Sin horas libres ese día'}</option>` +
@@ -230,70 +265,8 @@ async function cargarHoras() {
           ${formatearHoraCliente(h.hora)}${h.disponible ? '' : ' (ocupada)'}
         </option>`).join('');
   } catch (err) {
-    console.warn('No se pudieron cargar los horarios:', err.message);
+    console.warn('No se pudieron cargar las horas:', err.message);
     select.innerHTML = '<option value="" disabled selected>No se pudieron cargar los horarios</option>';
-  }
-}
-  /* ---------- HORARIO SEMANAL (se muestra al cliente) ---------- *
-/* ---------- HORARIO SEMANAL (se muestra al cliente) ---------- */
-function asegurarSeccionHorarios() {
-  let cont = document.getElementById('horariosSitio');
-  if (cont) return cont;
-
-  // Si la sección no está en index.html, se crea debajo de Promociones
-  const seccion = document.createElement('section');
-  seccion.className = 'section-box';
-  seccion.id = 'horarios';
-  seccion.innerHTML = `
-    <h2 class="section-title"><i class="fa-regular fa-clock"></i> Horarios de Atención</h2>
-    <div id="horariosSitio" class="horarios-sitio"><p>Cargando horarios...</p></div>
-    <p class="horarios-nota">Elige tu fecha en el formulario para ver qué horas están libres.</p>
-  `;
-
-  const promos = document.getElementById('promosContainer');
-  const caja = promos ? (promos.closest('.section-box') || promos.parentElement) : null;
-  if (caja) {
-    caja.after(seccion);
-  } else {
-    (document.querySelector('.content-col') || document.querySelector('main') || document.body).appendChild(seccion);
-  }
-  return seccion.querySelector('#horariosSitio');
-}
-
-async function cargarHorarioSemanal() {
-  const nombres = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-  const orden   = [1, 2, 3, 4, 5, 6, 0];
-  const aAmPm = (hora24) => {
-    let [h, m] = hora24.split(':').map(Number);
-    const sufijo = h >= 12 ? 'PM' : 'AM';
-    h = h % 12 || 12;
-    return `${h}:${String(m).padStart(2, '0')} ${sufijo}`;
-  };
-
-  const cont = asegurarSeccionHorarios();
-
-  try {
-    const res = await fetch(`${API_URL}/horario-semanal`);
-    if (!res.ok) throw new Error(`Error ${res.status}`);
-    const lista = await res.json();
-
-    if (lista.length === 0) {
-      cont.innerHTML = '<p>Pronto publicaremos nuestros horarios.</p>';
-      return;
-    }
-
-    const hoy = new Date().getDay();
-    cont.innerHTML = orden.map(d => {
-      const horas = lista.filter(h => h.DiaSemana === d);
-      const clase = `dia-sitio${d === hoy ? ' hoy' : ''}${horas.length === 0 ? ' cerrado' : ''}`;
-      const contenido = horas.length
-        ? `<div class="chips-sitio">${horas.map(h => `<span class="chip-sitio">${aAmPm(h.Hora)}</span>`).join('')}</div>`
-        : '<p>Sin atención</p>';
-      return `<div class="${clase}"><h3>${nombres[d]}</h3>${contenido}</div>`;
-    }).join('');
-  } catch (err) {
-    console.warn('No se pudo cargar el horario semanal:', err.message);
-    cont.innerHTML = '<p>No se pudieron cargar los horarios. Intenta de nuevo más tarde.</p>';
   }
 }
 
@@ -304,9 +277,8 @@ function obtenerUbicacionGPS() {
     return;
   }
   navigator.geolocation.getCurrentPosition(position => {
-    const lat = position.coords.latitude;
-    const lon = position.coords.longitude;
-    document.getElementById('direccion').value = `GPS: Lat ${lat.toFixed(4)}, Lon ${lon.toFixed(4)}`;
+    const { latitude, longitude } = position.coords;
+    document.getElementById('direccion').value = `GPS: Lat ${latitude.toFixed(4)}, Lon ${longitude.toFixed(4)}`;
     avisoCliente('📍 Ubicación GPS capturada con éxito.');
   }, () => {
     avisoCliente('No se pudo obtener la ubicación. Ingresa tu dirección manualmente.', 'error');
@@ -336,16 +308,15 @@ async function validarYEnviarReserva(e) {
     return;
   }
 
-  if (fecha.slice(0, 4) !== '2026') {
-    avisoCliente('⚠️ La fecha debe corresponder al año 2026.', 'error');
+  if (fecha.slice(0, 4) !== String(ANIO_RESERVAS)) {
+    avisoCliente(`⚠️ La fecha debe corresponder al año ${ANIO_RESERVAS}.`, 'error');
     return;
   }
 
   const idServicio = Number(servicio);
   const idZona     = Number(zona);
   if (!idServicio || !idZona) {
-    console.error('Los select no tienen IDs numéricos:', { servicio, zona });
-    avisoCliente('Error interno: servicio o zona sin identificador.', 'error');
+    avisoCliente('Error interno: servicio o distrito sin identificador.', 'error');
     return;
   }
 

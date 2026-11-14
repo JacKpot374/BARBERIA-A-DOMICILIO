@@ -8,12 +8,12 @@ const multer = require('multer');
 const sql = require('mssql/msnodesqlv8');
 
 const app = express();
+app.set('trust proxy', 'loopback');   // para que el bloqueo por intentos cuente por persona cuando uses el túnel
 app.use(express.json());
 app.use(cors());
 
 // ---------- NOMBRES DE COLUMNAS DE ZonasCobertura (ajústalos si son distintos) ----------
-const ZONA = { tabla: 'ZonasCobertura', id: 'IdZona', nombre: 'Nombre', costo: 'Costo' };
-
+const ZONA = { tabla: 'ZonasCobertura', id: 'IdZona', nombre: 'NombreZona', costo: 'CostoTraslado' };
 // ---------- CARPETA DE IMÁGENES ----------
 const CARPETA_UPLOADS = path.join(__dirname, 'uploads');
 if (!fs.existsSync(CARPETA_UPLOADS)) fs.mkdirSync(CARPETA_UPLOADS);

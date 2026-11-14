@@ -1,6 +1,8 @@
 // auth.js - inicio de sesión del panel admin (se carga ANTES de admin.js)
 (function () {
-  const API = 'http://localhost:3000/api';
+  let API_URL = `${SERVIDOR}/api`;
+// O si prefieres la fija:
+  API_URL = 'http://localhost:3000/api';
   const CLAVE = 'barberDriveToken';
   const originalFetch = window.fetch.bind(window);
 
