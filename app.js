@@ -1,6 +1,6 @@
 // app.js - sitio público de Barber Drive (config.js debe cargarse ANTES)
-const API_URL = `${SERVIDOR}/api`;
 const BASE_URL = SERVIDOR;
+API_URL = 'http://localhost:3000/api';
 const ANIO_RESERVAS = 2026;
 
 // Datos de respaldo: solo se usan si el servidor no responde

@@ -26,7 +26,7 @@
   // Todas las llamadas a la API llevan el token; si el servidor responde 401, vuelve el login
   window.fetch = async function (url, opts) {
     opts = opts || {};
-    const esAPI = typeof url === 'string' && url.startsWith(API) && !url.startsWith(API + '/login');
+    const esAPI = typeof url === 'string' && /\/api\//.test(url) && !/\/api\/login/.test(url);
     if (esAPI) {
       const token = leerToken();
       if (token) {
@@ -62,7 +62,7 @@
       location.reload();
     } catch (err) {
       errorEl.textContent = err.message === 'Failed to fetch'
-        ? 'No se pudo conectar con el servidor (¿está encendido server.js y el túnel?).'
+        ? 'No se pudo conectar con el servidor (¿está encendido server.js?).'
         : err.message;
       document.getElementById('loginClave').value = '';
       btn.disabled = false;
@@ -84,7 +84,7 @@
       if (resp.ok) ocultarLogin();
     } catch (e) {
       mostrarLogin();
-      errorEl.textContent = 'No se pudo conectar con el servidor (¿está encendido server.js y el túnel?).';
+      errorEl.textContent = 'No se pudo conectar con el servidor (¿está encendido server.js?).';
     }
   })();
 })();

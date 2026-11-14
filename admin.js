@@ -1,4 +1,7 @@
-const API_URL = `${SERVIDOR}/api`;
+
+// O si prefieres la fija:
+API_URL = 'http://localhost:3000/api';
+
 let reservas = [];
 let totalSolicitudes = 0;
 let serviciosCache = [];
