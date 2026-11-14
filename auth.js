@@ -1,14 +1,12 @@
 // auth.js - inicio de sesión del panel admin (se carga ANTES de admin.js)
 (function () {
-  const API_URL = `${SERVIDOR}/api`;
-// O si prefieres la fija:
-  API_URL = 'http://localhost:3000/api';
+  const API = `${SERVIDOR}/api`;
   const CLAVE = 'barberDriveToken';
   const originalFetch = window.fetch.bind(window);
 
-  function leerToken()   { try { return sessionStorage.getItem(CLAVE); } catch (e) { return null; } }
+  function leerToken()     { try { return sessionStorage.getItem(CLAVE); } catch (e) { return null; } }
   function guardarToken(t) { try { sessionStorage.setItem(CLAVE, t); } catch (e) {} }
-  function borrarToken() { try { sessionStorage.removeItem(CLAVE); } catch (e) {} }
+  function borrarToken()   { try { sessionStorage.removeItem(CLAVE); } catch (e) {} }
 
   const overlay = document.getElementById('loginOverlay');
   const form    = document.getElementById('formLogin');
@@ -64,14 +62,14 @@
       location.reload();
     } catch (err) {
       errorEl.textContent = err.message === 'Failed to fetch'
-        ? 'No se pudo conectar con el servidor (¿está encendido server.js?).'
+        ? 'No se pudo conectar con el servidor (¿está encendido server.js y el túnel?).'
         : err.message;
       document.getElementById('loginClave').value = '';
       btn.disabled = false;
     }
   });
 
-   document.addEventListener('click', async (e) => {
+  document.addEventListener('click', async (e) => {
     if (!e.target.closest('#btnSalir')) return;
     try { await window.fetch(API + '/logout', { method: 'POST' }); } catch (err) {}
     borrarToken();
@@ -86,7 +84,7 @@
       if (resp.ok) ocultarLogin();
     } catch (e) {
       mostrarLogin();
-      errorEl.textContent = 'No se pudo conectar con el servidor (¿está encendido server.js?).';
+      errorEl.textContent = 'No se pudo conectar con el servidor (¿está encendido server.js y el túnel?).';
     }
   })();
 })();

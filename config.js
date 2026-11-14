@@ -1,5 +1,5 @@
 // config.js - dirección del servidor. Debe cargarse ANTES de app.js, auth.js y admin.js
-const URL_PUBLICA = '  https://weapon-python-apnic-strengths.trycloudflare.com   ';
+const URL_PUBLICA = 'https://PEGA-AQUI-TU-DIRECCION.trycloudflare.com'.trim().replace(/\/+$/, '');
 
 const SERVIDOR = (() => {
   const h = location.hostname;
