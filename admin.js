@@ -1,4 +1,4 @@
-let API_URL = `${SERVIDOR}/api`;
+const API_URL = `${SERVIDOR}/api`;
 // O si prefieres la fija:
 API_URL = 'http://localhost:3000/api';
 
